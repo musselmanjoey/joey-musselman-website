@@ -1,7 +1,7 @@
 'use client';
 
 import { BlogPost as BlogPostType } from '@/data/posts';
-import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
 
 interface BlogPostProps {
@@ -30,9 +30,9 @@ export default function BlogPost({ post, isExcerpt = false }: BlogPostProps) {
       <header className="entry-header mb-6">
         <h2 className="entry-title text-3xl md:text-4xl font-bold mb-3 text-gray-900">
           {isExcerpt ? (
-            <a href={`/${post.slug}`} className="hover:text-circus-red transition-colors">
+            <Link href={`/${post.slug}`} className="hover:text-circus-red transition-colors">
               {post.title}
-            </a>
+            </Link>
           ) : (
             post.title
           )}
@@ -48,6 +48,7 @@ export default function BlogPost({ post, isExcerpt = false }: BlogPostProps) {
         {/* Images */}
         {post.images && post.images.map((image, index) => (
           <div key={index} className="my-8 rounded-lg overflow-hidden shadow-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={image.src}
               alt={image.alt}
@@ -92,12 +93,12 @@ export default function BlogPost({ post, isExcerpt = false }: BlogPostProps) {
 
       {isExcerpt && (
         <footer className="entry-footer mt-6">
-          <a
+          <Link
             href={`/${post.slug}`}
             className="inline-block text-circus-red hover:text-red-700 font-medium transition-colors"
           >
             Read more →
-          </a>
+          </Link>
         </footer>
       )}
     </article>

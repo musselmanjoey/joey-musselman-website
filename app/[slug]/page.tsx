@@ -1,6 +1,7 @@
 import { blogPosts } from '@/data/posts';
 import VideoGallery from '@/components/VideoGallery';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 
 export function generateStaticParams() {
   return blogPosts.map((post) => ({
@@ -34,7 +35,7 @@ export default async function PostPage({
       <article className="max-w-5xl mx-auto">
         {/* Header */}
         <header className="mb-12 text-center">
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-8 transition-colors group"
           >
@@ -42,7 +43,7 @@ export default async function PostPage({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Home
-          </a>
+          </Link>
 
           <div className="inline-block glass px-4 py-2 rounded-full text-sm font-medium text-circus-red mb-6">
             {formatDate(post.date)}
@@ -76,6 +77,7 @@ export default async function PostPage({
             <div className="mt-12 space-y-6">
               {post.images.map((image, index) => (
                 <div key={index} className="rounded-2xl overflow-hidden glow-hover">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.src}
                     alt={image.alt}
@@ -96,7 +98,7 @@ export default async function PostPage({
 
         {/* Navigation */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pt-12 border-t border-white/10">
-          <a
+          <Link
             href="/"
             className="group flex items-center gap-2 text-white/80 hover:text-white transition-colors"
           >
@@ -104,14 +106,14 @@ export default async function PostPage({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             All Performances
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/#latest"
             className="px-6 py-3 glass-strong rounded-full font-medium hover:bg-white/15 transition-all"
           >
             View More Shows
-          </a>
+          </Link>
         </div>
       </article>
     </div>
