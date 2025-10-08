@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python scraper files
+download_youtube_videos.py
+scrapedVideos/
+*.mp4
+*.webp
+*.info.json

@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Joey Musselman Website
+
+A modern recreation of joeymusselman.com showcasing FSU Flying High Circus performances.
+
+## Tech Stack
+
+- **Next.js 15** - React framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **Google Fonts** - Noto Sans & Noto Serif
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+joey-musselman-site/
+├── app/
+│   ├── layout.tsx          # Main layout with Header, Sidebar, Footer
+│   ├── page.tsx            # Homepage (blog list)
+│   ├── [slug]/page.tsx     # Individual blog post pages
+│   └── globals.css         # Global styles
+├── components/
+│   ├── Header.tsx          # Site header with title
+│   ├── Sidebar.tsx         # Sidebar with widgets (search, recent posts, archives)
+│   ├── Footer.tsx          # Site footer
+│   └── BlogPost.tsx        # Blog post component
+├── data/
+│   └── posts.ts            # Blog post data
+└── public/
+    └── images/             # Place header and post images here
+```
 
-## Learn More
+## Adding Images
 
-To learn more about Next.js, take a look at the following resources:
+The site references these images that need to be added to `/public/images/`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **header-bg.jpg** - Header background image (from cropped-IMG_0140.jpg)
+2. **fh2.jpg** - Callaway Gardens 2018
+3. **IMG_8833.jpg** - Family photo 2018
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Content
 
-## Deploy on Vercel
+The site includes 6 blog posts with ~24 embedded YouTube videos:
+- 2018 FSU Flying High Circus at Callaway Gardens
+- 2018 FSU Flying High Circus Home Show
+- Summer 2017 Flying High at Callaway Gardens
+- FSU Flying High Circus Spring Show 2017
+- My juggling–the early years
+- My touchdown
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Build & Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm run start
+```
+
+## Design Notes
+
+- Color scheme: #dd3333 (circus red)
+- Responsive design with fixed sidebar on desktop
+- Mobile-friendly with collapsible sidebar
+- WordPress Twenty Fifteen inspired layout
