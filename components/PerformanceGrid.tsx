@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { blogPosts } from '@/data/posts';
 
 export default function PerformanceGrid() {
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
 
   const categories = ['all', '2018', '2017', '2015'];
 
@@ -46,7 +46,7 @@ export default function PerformanceGrid() {
         {/* Bento Grid of Performances */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPosts.map((post, index) => (
-            <a
+            <Link
               key={post.id}
               href={`/${post.slug}`}
               className={`group glass-strong rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-500 glow-hover ${
@@ -66,8 +66,6 @@ export default function PerformanceGrid() {
                     style={{
                       backgroundImage: `url(https://img.youtube.com/vi/${post.videos[0]}/maxresdefault.jpg)`,
                     }}
-                    onMouseEnter={() => setHoveredVideo(post.videos![0])}
-                    onMouseLeave={() => setHoveredVideo(null)}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
@@ -102,7 +100,7 @@ export default function PerformanceGrid() {
                   {post.content.split('\n\n')[0]}
                 </p>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
@@ -29,9 +30,9 @@ export default function Navigation() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <a href="/" className="text-2xl font-bold">
+            <Link href="/" className="text-2xl font-bold">
               <span className="gradient-text">Joey Musselman</span>
-            </a>
+            </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
