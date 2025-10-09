@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import Image from 'next/image';
+import { getSocketUrl } from '@/lib/socket';
 
 interface Player {
   id: string;
@@ -44,7 +45,7 @@ export default function HostPage() {
   const [voteCounts, setVoteCounts] = useState<VoteCount[]>([]);
 
   useEffect(() => {
-    const socketInstance = io('http://localhost:3001');
+    const socketInstance = io(getSocketUrl());
 
     socketInstance.on('connect', () => {
       console.log('Connected to server');

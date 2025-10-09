@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
+import { getSocketUrl } from '@/lib/socket';
 
 interface Submission {
   caption: string;
@@ -32,7 +33,7 @@ function PlayPageContent() {
       return;
     }
 
-    const socketInstance = io('http://localhost:3001');
+    const socketInstance = io(getSocketUrl());
 
     socketInstance.on('connect', () => {
       console.log('Connected to server');
