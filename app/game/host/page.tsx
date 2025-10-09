@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import Image from 'next/image';
 import { getSocketUrl } from '@/lib/socket';
 
 interface Player {
@@ -39,9 +38,9 @@ export default function HostPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionCount, setSubmissionCount] = useState<number>(0);
   const [voteCount, setVoteCount] = useState<number>(0);
-  const [winner, setWinner] = useState<any>(null);
+  const [winner, setWinner] = useState<Player | null>(null);
   const [winningCaption, setWinningCaption] = useState<string>('');
-  const [allScores, setAllScores] = useState<any[]>([]);
+  const [allScores, setAllScores] = useState<Array<{name: string; score: number}>>([]);
   const [voteCounts, setVoteCounts] = useState<VoteCount[]>([]);
 
   useEffect(() => {
@@ -255,7 +254,7 @@ export default function HostPage() {
                     key={index}
                     className="glass rounded-2xl p-6 text-center"
                   >
-                    <p className="text-xl text-white italic">"{submission.caption}"</p>
+                    <p className="text-xl text-white italic">&quot;{submission.caption}&quot;</p>
                   </div>
                 ))}
               </div>
@@ -283,7 +282,7 @@ export default function HostPage() {
                 {winner?.name} Wins!
               </h2>
               <p className="text-3xl text-white/80 italic mb-8">
-                "{winningCaption}"
+                &quot;{winningCaption}&quot;
               </p>
 
               {/* Image */}
@@ -308,7 +307,7 @@ export default function HostPage() {
                   >
                     <div className="flex-1">
                       <p className="text-white font-bold text-lg">{result.playerName}</p>
-                      <p className="text-white/60 italic">"{result.caption}"</p>
+                      <p className="text-white/60 italic">&quot;{result.caption}&quot;</p>
                     </div>
                     <div className="text-2xl font-bold gradient-text">
                       {result.votes} {result.votes === 1 ? 'vote' : 'votes'}

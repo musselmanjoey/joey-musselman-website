@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function JoinPage() {
   const router = useRouter();
@@ -104,9 +105,9 @@ export default function JoinPage() {
 
         {/* Back to Home */}
         <div className="mt-8 text-center">
-          <a href="/" className="text-white/60 hover:text-white transition-colors">
+          <Link href="/" className="text-white/60 hover:text-white transition-colors">
             ← Back to Home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -208,7 +208,7 @@ function PlayPageContent() {
                   Waiting for other players...
                 </p>
                 <div className="glass rounded-2xl p-6 mb-6">
-                  <p className="text-white/80 italic">"{caption}"</p>
+                  <p className="text-white/80 italic">&quot;{caption}&quot;</p>
                 </div>
                 <div className="flex justify-center gap-2">
                   <div className="w-3 h-3 bg-circus-red rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -242,7 +242,7 @@ function PlayPageContent() {
                 )}
 
                 <p className="text-white/60 text-center mb-6">
-                  Tap a caption to vote (you can't vote for yourself!)
+                  Tap a caption to vote (you can&apos;t vote for yourself!)
                 </p>
 
                 <div className="space-y-3">
@@ -257,7 +257,7 @@ function PlayPageContent() {
                           : 'hover:bg-white/20 hover:scale-105 cursor-pointer'
                       }`}
                     >
-                      <p className="text-lg text-white italic">"{submission.caption}"</p>
+                      <p className="text-lg text-white italic">&quot;{submission.caption}&quot;</p>
                       {submission.playerId === myId && (
                         <p className="text-circus-red text-sm mt-2">Your caption</p>
                       )}
