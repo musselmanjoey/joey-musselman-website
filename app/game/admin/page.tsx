@@ -24,11 +24,23 @@ export default function AdminPage() {
 
     socketInstance.on('connect', () => {
       console.log('Connected to server');
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Connected to server: ${getSocketUrl()}`]);
       socketInstance.emit('get-images');
+    });
+
+    socketInstance.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: Connection failed - ${error.message}`]);
+    });
+
+    socketInstance.on('disconnect', () => {
+      console.log('Disconnected from server');
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Disconnected from server`]);
     });
 
     socketInstance.on('images-list', (imagesList: GameImage[]) => {
       setImages(imagesList);
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Received ${imagesList.length} images from server`]);
     });
 
     setSocket(socketInstance);
@@ -91,7 +103,16 @@ export default function AdminPage() {
           filename: file.name
         });
 
+        // Add timeout in case server doesn't respond
+        const timeout = setTimeout(() => {
+          const err = 'Server timeout - no response after 10 seconds';
+          setUploadStatus(err);
+          setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: ${err}`]);
+          setUploading(false);
+        }, 10000);
+
         socket.once('image-uploaded', (response: { success: boolean; message: string; image?: GameImage }) => {
+          clearTimeout(timeout);
           console.log('Upload response:', response);
           setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Server response: ${response.message}`]);
 
