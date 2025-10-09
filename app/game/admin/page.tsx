@@ -166,7 +166,6 @@ export default function AdminPage() {
               <input
                 type="file"
                 accept="image/*,.heic,.heif"
-                capture="environment"
                 onChange={handleImageUpload}
                 disabled={uploading}
                 className="hidden"
