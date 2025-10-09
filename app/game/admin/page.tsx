@@ -17,6 +17,7 @@ export default function AdminPage() {
   const [images, setImages] = useState<GameImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   useEffect(() => {
     const socketInstance = io(getSocketUrl());
@@ -41,33 +42,50 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size);
+    const info = `File: ${file.name}, Type: ${file.type}, Size: ${(file.size / 1024).toFixed(1)}KB`;
+    console.log('File selected:', info);
+    setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Selected: ${info}`]);
 
     // Check file type - be more permissive for iPhone images
     const isImage = file.type.startsWith('image/') ||
                     file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/);
 
     if (!isImage) {
-      setUploadStatus(`File type not supported: ${file.type || 'unknown'}`);
+      const err = `File type not supported: ${file.type || 'unknown'}`;
+      setUploadStatus(err);
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: ${err}`]);
       return;
     }
 
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setUploadStatus('Image must be less than 5MB');
+      const err = 'Image must be less than 5MB';
+      setUploadStatus(err);
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: ${err}`]);
       return;
     }
 
     setUploading(true);
     setUploadStatus('Uploading...');
+    setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Converting to base64...`]);
 
     // Convert to base64
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
       console.log('Image converted to base64, length:', base64.length);
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Converted to base64 (${(base64.length / 1024).toFixed(1)}KB)`]);
 
       if (socket) {
+        if (!socket.connected) {
+          const err = 'Socket not connected';
+          setUploadStatus(err);
+          setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: ${err}`]);
+          setUploading(false);
+          return;
+        }
+
+        setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Sending to server...`]);
         socket.emit('upload-image', {
           image: base64,
           filename: file.name
@@ -75,6 +93,8 @@ export default function AdminPage() {
 
         socket.once('image-uploaded', (response: { success: boolean; message: string; image?: GameImage }) => {
           console.log('Upload response:', response);
+          setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] Server response: ${response.message}`]);
+
           if (response.success && response.image) {
             setImages(prev => [...prev, response.image!]);
             setUploadStatus('Image uploaded successfully!');
@@ -87,14 +107,18 @@ export default function AdminPage() {
           setTimeout(() => setUploadStatus(''), 3000);
         });
       } else {
-        setUploadStatus('Not connected to server');
+        const err = 'Not connected to server';
+        setUploadStatus(err);
+        setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: ${err}`]);
         setUploading(false);
       }
     };
 
     reader.onerror = (error) => {
       console.error('FileReader error:', error);
-      setUploadStatus('Error reading file - try a different image format');
+      const err = 'Error reading file - try a different image format';
+      setUploadStatus(err);
+      setDebugInfo(prev => [...prev, `[${new Date().toLocaleTimeString()}] ERROR: ${err}`]);
       setUploading(false);
     };
 
@@ -197,6 +221,28 @@ export default function AdminPage() {
                   uploadStatus.includes('Error') || uploadStatus.includes('failed') ? 'text-red-400' :
                   'text-white/80'
                 }>{uploadStatus}</p>
+              </div>
+            )}
+
+            {/* Debug Panel */}
+            {debugInfo.length > 0 && (
+              <div className="glass rounded-xl p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-white/80 font-medium text-sm">Debug Log</p>
+                  <button
+                    onClick={() => setDebugInfo([])}
+                    className="text-white/40 hover:text-white text-xs"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="bg-black/30 rounded-lg p-3 max-h-40 overflow-y-auto font-mono text-xs space-y-1">
+                  {debugInfo.map((info, idx) => (
+                    <div key={idx} className={`${info.includes('ERROR') ? 'text-red-400' : 'text-white/60'}`}>
+                      {info}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
