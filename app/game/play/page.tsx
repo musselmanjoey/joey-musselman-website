@@ -37,7 +37,7 @@ function PlayPageContent() {
 
     socketInstance.on('connect', () => {
       console.log('Connected to server');
-      setMyId(socketInstance.id);
+      setMyId(socketInstance.id || '');
       socketInstance.emit('join-room', { roomCode, playerName });
     });
 
