@@ -41,9 +41,14 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      setUploadStatus('Please select an image file');
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size);
+
+    // Check file type - be more permissive for iPhone images
+    const isImage = file.type.startsWith('image/') ||
+                    file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/);
+
+    if (!isImage) {
+      setUploadStatus(`File type not supported: ${file.type || 'unknown'}`);
       return;
     }
 
@@ -60,6 +65,7 @@ export default function AdminPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
+      console.log('Image converted to base64, length:', base64.length);
 
       if (socket) {
         socket.emit('upload-image', {
@@ -68,6 +74,7 @@ export default function AdminPage() {
         });
 
         socket.once('image-uploaded', (response: { success: boolean; message: string; image?: GameImage }) => {
+          console.log('Upload response:', response);
           if (response.success && response.image) {
             setImages(prev => [...prev, response.image!]);
             setUploadStatus('Image uploaded successfully!');
@@ -79,11 +86,15 @@ export default function AdminPage() {
           // Clear status after 3 seconds
           setTimeout(() => setUploadStatus(''), 3000);
         });
+      } else {
+        setUploadStatus('Not connected to server');
+        setUploading(false);
       }
     };
 
-    reader.onerror = () => {
-      setUploadStatus('Error reading file');
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      setUploadStatus('Error reading file - try a different image format');
       setUploading(false);
     };
 
@@ -147,14 +158,15 @@ export default function AdminPage() {
         <div className="glass-strong rounded-3xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">Upload New Image</h2>
           <p className="text-white/60 mb-6">
-            Select an image from your device (max 5MB, JPG/PNG)
+            Select an image from your device (max 5MB, JPG/PNG/HEIC)
           </p>
 
           <div className="flex flex-col gap-4">
             <label className="w-full">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
+                capture="environment"
                 onChange={handleImageUpload}
                 disabled={uploading}
                 className="hidden"
