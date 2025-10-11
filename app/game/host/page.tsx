@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getSocketUrl } from '@/lib/socket';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Player {
   id: string;
@@ -42,6 +43,15 @@ export default function HostPage() {
   const [winningCaption, setWinningCaption] = useState<string>('');
   const [allScores, setAllScores] = useState<Array<{name: string; score: number}>>([]);
   const [voteCounts, setVoteCounts] = useState<VoteCount[]>([]);
+  const [joinUrl, setJoinUrl] = useState<string>('');
+
+  useEffect(() => {
+    // Set the join URL based on current location
+    if (typeof window !== 'undefined') {
+      const baseUrl = `${window.location.protocol}//${window.location.host}`;
+      setJoinUrl(`${baseUrl}/game/join`);
+    }
+  }, []);
 
   useEffect(() => {
     const socketInstance = io(getSocketUrl());
@@ -127,14 +137,36 @@ export default function HostPage() {
 
         {/* Room Code Display */}
         {roomCode && gameState === 'lobby' && (
-          <div className="glass-strong rounded-3xl p-12 mb-8 text-center">
-            <p className="text-white/80 text-2xl mb-4">Room Code:</p>
-            <div className="text-8xl font-bold tracking-wider gradient-text mb-6">
-              {roomCode}
+          <div className="glass-strong rounded-3xl p-12 mb-8">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-12">
+              {/* Room Code */}
+              <div className="text-center flex-1">
+                <p className="text-white/80 text-2xl mb-4">Room Code:</p>
+                <div className="text-8xl font-bold tracking-wider gradient-text mb-6">
+                  {roomCode}
+                </div>
+                <p className="text-white/60 text-lg">
+                  Or scan the QR code →
+                </p>
+              </div>
+
+              {/* QR Code */}
+              {joinUrl && (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="bg-white p-4 rounded-2xl">
+                    <QRCodeSVG
+                      value={joinUrl}
+                      size={200}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <p className="text-white/60 text-sm max-w-[200px] text-center">
+                    Scan to join the game
+                  </p>
+                </div>
+              )}
             </div>
-            <p className="text-white/60 text-lg">
-              Players join at: <span className="text-circus-red">localhost:3001/game/join</span>
-            </p>
           </div>
         )}
 
