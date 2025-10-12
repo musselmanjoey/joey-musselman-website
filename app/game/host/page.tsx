@@ -58,18 +58,42 @@ export default function HostPage() {
 
     socketInstance.on('connect', () => {
       console.log('Connected to server');
-      socketInstance.emit('create-room');
+
+      // Check if we have an existing room code (from refresh)
+      const savedRoomCode = localStorage.getItem('hostRoomCode');
+      if (savedRoomCode) {
+        console.log('Attempting to rejoin room:', savedRoomCode);
+        socketInstance.emit('rejoin-room', { roomCode: savedRoomCode });
+      } else {
+        socketInstance.emit('create-room');
+      }
     });
 
     socketInstance.on('room-created', ({ roomCode, room }) => {
-      console.log('Room created:', roomCode);
+      console.log('Room created/rejoined:', roomCode);
       setRoomCode(roomCode);
       setRoom(room);
+      // Save room code to localStorage
+      localStorage.setItem('hostRoomCode', roomCode);
+
+      // Restore game state if rejoining
+      if (room.gameState) setGameState(room.gameState);
+      if (room.currentImage) setCurrentImage(room.currentImage);
+      if (room.currentRound) setRound(room.currentRound);
     });
 
     socketInstance.on('room-updated', (updatedRoom) => {
       console.log('Room updated:', updatedRoom);
       setRoom(updatedRoom);
+    });
+
+    socketInstance.on('error', ({ message }) => {
+      console.error('Server error:', message);
+      // If room not found, clear localStorage and create new room
+      if (message === 'Room not found') {
+        localStorage.removeItem('hostRoomCode');
+        socketInstance.emit('create-room');
+      }
     });
 
     socketInstance.on('game-state-changed', (data) => {
@@ -103,6 +127,8 @@ export default function HostPage() {
       console.log('Room closed');
       setRoom(null);
       setRoomCode('');
+      // Clear saved room code
+      localStorage.removeItem('hostRoomCode');
     });
 
     setSocket(socketInstance);
