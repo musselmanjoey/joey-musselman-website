@@ -108,8 +108,29 @@ app.prepare().then(() => {
 
     // Create a new game room (host)
     socket.on('create-room', () => {
+      console.log('📝 Create room request from:', socket.id);
       const room = createRoom(socket.id);
       socket.join(room.code);
+      socket.emit('room-created', { roomCode: room.code, room });
+    });
+
+    // Rejoin existing room as host (for page refresh)
+    socket.on('rejoin-room', ({ roomCode }) => {
+      console.log('🔄 Rejoin request for room:', roomCode, 'from socket:', socket.id);
+      const room = rooms.get(roomCode?.toUpperCase());
+
+      if (!room) {
+        console.log('❌ Room not found:', roomCode);
+        socket.emit('error', { message: 'Room not found' });
+        return;
+      }
+
+      // Update the host socket ID
+      const oldHostId = room.hostSocketId;
+      room.hostSocketId = socket.id;
+      socket.join(roomCode);
+
+      console.log(`✅ Host rejoined room ${roomCode} (old socket: ${oldHostId}, new socket: ${socket.id})`);
       socket.emit('room-created', { roomCode: room.code, room });
     });
 
