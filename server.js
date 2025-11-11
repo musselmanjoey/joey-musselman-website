@@ -12,6 +12,7 @@ const handler = app.getRequestHandler();
 
 // In-memory game state
 const rooms = new Map();
+const abductionRooms = new Map();
 
 // Helper functions
 function generateRoomCode() {
@@ -75,6 +76,141 @@ function removePlayerFromRoom(socketId) {
       if (room.players.length === 0 || socketId === room.hostSocketId) {
         rooms.delete(code);
         console.log(`🗑️  Room ${code} deleted`);
+        return { deleted: true, code };
+      }
+      return { deleted: false, code, room };
+    }
+  }
+  return null;
+}
+
+// Abducktion Game Helper Functions
+function generateAbductionBoard(level) {
+  // Create increasingly complex boards based on level
+  const size = Math.min(6 + Math.floor(level / 2), 10); // Start at 6x6, grow to max 10x10
+  const board = Array(size).fill(0).map(() => Array(size).fill(0));
+
+  // Add blocks based on level difficulty
+  const blockCount = Math.min(5 + level * 2, size * size / 3);
+  for (let i = 0; i < blockCount; i++) {
+    const x = Math.floor(Math.random() * size);
+    const y = Math.floor(Math.random() * size);
+    if (board[y][x] === 0) {
+      board[y][x] = 1; // 1 = block
+    }
+  }
+
+  // Ensure start and target positions are clear
+  const startPos = { x: 0, y: 0 };
+  const targetPos = { x: size - 1, y: size - 1 };
+  board[startPos.y][startPos.x] = 0;
+  board[targetPos.y][targetPos.x] = 0;
+
+  return { board, startPos, targetPos };
+}
+
+function createAbductionRoom(hostSocketId) {
+  const code = generateRoomCode();
+  const { board, startPos, targetPos } = generateAbductionBoard(1);
+
+  const room = {
+    code,
+    hostSocketId,
+    players: [],
+    gameState: 'lobby', // lobby, playing, results
+    currentLevel: 1,
+    board,
+    targetPosition: targetPos,
+    createdAt: Date.now()
+  };
+
+  abductionRooms.set(code, room);
+  console.log(`👽 Abducktion room created: ${code}`);
+  return room;
+}
+
+function addPlayerToAbductionRoom(roomCode, socketId, playerName) {
+  const room = abductionRooms.get(roomCode);
+  if (!room) return null;
+
+  // Check for duplicate names
+  if (room.players.some(p => p.name === playerName)) {
+    return { error: 'Name already taken' };
+  }
+
+  const { startPos } = generateAbductionBoard(room.currentLevel);
+  const player = {
+    id: socketId,
+    name: playerName,
+    position: { ...startPos },
+    hasWon: false,
+    moveCount: 0,
+    board: JSON.parse(JSON.stringify(room.board)) // Deep copy for each player
+  };
+
+  room.players.push(player);
+  console.log(`👽 Player ${playerName} joined Abducktion room ${roomCode}`);
+  return room;
+}
+
+function handleAbductionMove(room, playerId, direction) {
+  const player = room.players.find(p => p.id === playerId);
+  if (!player || player.hasWon) return null;
+
+  const { x, y } = player.position;
+  let newX = x;
+  let newY = y;
+
+  switch (direction) {
+    case 'up':
+      newY = y - 1;
+      break;
+    case 'down':
+      newY = y + 1;
+      break;
+    case 'left':
+      newX = x - 1;
+      break;
+    case 'right':
+      newX = x + 1;
+      break;
+  }
+
+  // Check bounds
+  if (newY < 0 || newY >= player.board.length || newX < 0 || newX >= player.board[0].length) {
+    return null;
+  }
+
+  // If there's a block, jump over it (remove it)
+  if (player.board[newY][newX] === 1) {
+    player.board[newY][newX] = 0;
+  }
+
+  // Move player
+  player.position = { x: newX, y: newY };
+  player.moveCount++;
+
+  // Check if player reached target
+  if (newX === room.targetPosition.x && newY === room.targetPosition.y) {
+    player.hasWon = true;
+    console.log(`🏆 Player ${player.name} won in ${player.moveCount} moves!`);
+  }
+
+  return player;
+}
+
+function removePlayerFromAbductionRoom(socketId) {
+  for (const [code, room] of abductionRooms.entries()) {
+    const playerIndex = room.players.findIndex(p => p.id === socketId);
+    if (playerIndex !== -1) {
+      const player = room.players[playerIndex];
+      room.players.splice(playerIndex, 1);
+      console.log(`👋 Player ${player.name} left Abducktion room ${code}`);
+
+      // If room is empty or host left, delete room
+      if (room.players.length === 0 || socketId === room.hostSocketId) {
+        abductionRooms.delete(code);
+        console.log(`🗑️  Abducktion room ${code} deleted`);
         return { deleted: true, code };
       }
       return { deleted: false, code, room };
@@ -160,15 +296,24 @@ app.prepare().then(() => {
     // Player disconnect
     socket.on('disconnect', () => {
       console.log('❌ Client disconnected:', socket.id);
-      const result = removePlayerFromRoom(socket.id);
 
+      // Handle caption contest room
+      const result = removePlayerFromRoom(socket.id);
       if (result) {
         if (result.deleted) {
-          // Notify all players room was deleted
           io.to(result.code).emit('room-closed', { message: 'Host left the game' });
         } else {
-          // Notify remaining players
           io.to(result.code).emit('room-updated', result.room);
+        }
+      }
+
+      // Handle abducktion room
+      const abductionResult = removePlayerFromAbductionRoom(socket.id);
+      if (abductionResult) {
+        if (abductionResult.deleted) {
+          io.to(abductionResult.code).emit('room-closed', { message: 'Host left the game' });
+        } else {
+          io.to(abductionResult.code).emit('abducktion-room-updated', abductionResult.room);
         }
       }
     });
@@ -320,6 +465,131 @@ app.prepare().then(() => {
     socket.on('test', (data) => {
       console.log('Test event received:', data);
       socket.emit('test-response', { message: 'WebSocket is working!' });
+    });
+
+    // ========== ABDUCKTION GAME HANDLERS ==========
+
+    // Create Abducktion room (host)
+    socket.on('create-abducktion-room', () => {
+      console.log('👽 Create Abducktion room request from:', socket.id);
+      const room = createAbductionRoom(socket.id);
+      socket.join(room.code);
+      socket.emit('abducktion-room-created', room);
+    });
+
+    // Rejoin Abducktion room
+    socket.on('rejoin-abducktion-room', ({ roomCode, playerId, playerName, isHost }) => {
+      console.log('🔄 Rejoin Abducktion request for room:', roomCode, 'from socket:', socket.id);
+      const room = abductionRooms.get(roomCode?.toUpperCase());
+
+      if (!room) {
+        console.log('❌ Abducktion room not found:', roomCode);
+        socket.emit('error', 'Room not found');
+        return;
+      }
+
+      if (isHost) {
+        // Host rejoining - update socket ID
+        const oldHostId = room.hostSocketId;
+        room.hostSocketId = socket.id;
+        socket.join(roomCode);
+        console.log(`✅ Abducktion host rejoined room ${roomCode} (old: ${oldHostId}, new: ${socket.id})`);
+        socket.emit('abducktion-room-created', room);
+      } else {
+        // Player rejoining - check if they were already in the room
+        const existingPlayer = room.players.find(p => p.id === playerId);
+        if (existingPlayer) {
+          // Update their socket ID
+          existingPlayer.id = socket.id;
+          socket.join(roomCode);
+          io.to(roomCode).emit('abducktion-room-updated', room);
+        } else {
+          // New player joining
+          socket.emit('join-abducktion-room', { roomCode, playerName });
+        }
+      }
+    });
+
+    // Join Abducktion room (player)
+    socket.on('join-abducktion-room', ({ roomCode, playerName }) => {
+      console.log('👽 Join Abducktion room:', roomCode, 'Player:', playerName);
+      const result = addPlayerToAbductionRoom(roomCode?.toUpperCase(), socket.id, playerName);
+
+      if (!result) {
+        socket.emit('error', 'Room not found');
+        return;
+      }
+
+      if (result.error) {
+        socket.emit('error', result.error);
+        return;
+      }
+
+      socket.join(roomCode);
+      io.to(roomCode).emit('abducktion-room-updated', result);
+      socket.emit('room-joined', { roomCode: result.code, playerId: socket.id });
+    });
+
+    // Start Abducktion game
+    socket.on('start-abducktion-game', ({ roomCode }) => {
+      const room = abductionRooms.get(roomCode);
+      if (!room || socket.id !== room.hostSocketId) return;
+
+      room.gameState = 'playing';
+      console.log(`🎮 Abducktion game started in room ${roomCode}`);
+      io.to(roomCode).emit('abducktion-game-state-changed', room);
+    });
+
+    // Handle player move
+    socket.on('abducktion-move', ({ roomCode, direction }) => {
+      const room = abductionRooms.get(roomCode);
+      if (!room || room.gameState !== 'playing') return;
+
+      const player = handleAbductionMove(room, socket.id, direction);
+      if (!player) return;
+
+      // Broadcast updated room state to all players
+      io.to(roomCode).emit('abducktion-room-updated', room);
+
+      // If player won, check if we should move to results
+      if (player.hasWon) {
+        const allFinished = room.players.every(p => p.hasWon);
+        if (allFinished || room.players.length === 1) {
+          // Find winner (player with fewest moves)
+          const winner = room.players.reduce((prev, current) =>
+            (prev.moveCount < current.moveCount) ? prev : current
+          );
+
+          room.gameState = 'results';
+          room.winner = winner;
+          console.log(`🏆 Abducktion round complete in room ${roomCode}. Winner: ${winner.name}`);
+          io.to(roomCode).emit('abducktion-game-state-changed', room);
+        }
+      }
+    });
+
+    // Next level
+    socket.on('next-abducktion-level', ({ roomCode }) => {
+      const room = abductionRooms.get(roomCode);
+      if (!room || socket.id !== room.hostSocketId) return;
+
+      room.currentLevel++;
+      const { board, startPos, targetPos } = generateAbductionBoard(room.currentLevel);
+      room.board = board;
+      room.targetPosition = targetPos;
+      room.gameState = 'playing';
+      room.winner = null;
+
+      // Reset all players
+      room.players.forEach(player => {
+        player.position = { ...startPos };
+        player.hasWon = false;
+        player.moveCount = 0;
+        player.board = JSON.parse(JSON.stringify(board));
+      });
+
+      console.log(`🎮 Abducktion level ${room.currentLevel} started in room ${roomCode}`);
+      io.to(roomCode).emit('abducktion-game-state-changed', room);
     });
   });
 
