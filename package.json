@@ -3,18 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "next dev",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
+    "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "next": "15.5.9",
-    "qrcode.react": "^4.2.0",
     "react": "19.1.2",
-    "react-dom": "19.1.2",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "react-dom": "19.1.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
