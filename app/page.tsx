@@ -66,14 +66,37 @@ export default function Home() {
         <div className="space-y-6">
           <ProjectCard
             title="Circus Archives"
-            description="Community platform preserving FSU Flying High Circus performance history. Features video uploads, performer tagging, voting system, and comment threads."
+            description="Community platform preserving FSU Flying High Circus performance history. Features video uploads, performer tagging, a voting system with performer bonuses, and threaded comments."
             tech={['Next.js', 'TypeScript', 'PostgreSQL', 'Prisma', 'NextAuth']}
             link="https://flyinghighcircusarchives.com"
+            featured
+          />
+          <ProjectCard
+            title="Swaddle"
+            description="AI-powered Spotify playlist curator that transforms music curation into natural language conversation. Analyzes your library's audio features and lyrics sentiment, then integrates with Claude Desktop via MCP to create perfectly curated playlists."
+            tech={['React', 'Electron', 'PostgreSQL', 'Spotify API', 'MCP']}
+            featured
+          />
+          <ProjectCard
+            title="OpTracker"
+            description="Production-grade volleyball analytics platform that extracts detailed player statistics from FIVB Beach Pro Tour matches with 100% accuracy using Playwright automation. Features multiple interfaces including a real-time match tracker with court visualization."
+            tech={['Python', 'Playwright', 'PostgreSQL', 'SQLAlchemy', 'MCP']}
+            featured
           />
           <ProjectCard
             title="MagicHelper"
-            description="MTG Arena collection manager and deck building assistant. Parses Arena log files to build a local database, enabling intelligent deck recommendations."
-            tech={['Python', 'SQLite', 'MCP Server']}
+            description="MTG Arena collection manager and deck building assistant that parses Arena log files to build a local SQLite database. Integrates with Claude Desktop via MCP server for intelligent deck recommendations and game state analysis."
+            tech={['Python', 'SQLite', 'MCP']}
+          />
+          <ProjectCard
+            title="Finance"
+            description="Privacy-first subscription detection tool that replicates Rocket Money functionality without cloud dependencies. Parses bank statements, uses local Ollama AI for transaction categorization, and identifies forgotten subscriptions with risk scoring."
+            tech={['Python', 'PostgreSQL', 'Ollama', 'Pandas', 'Tkinter']}
+          />
+          <ProjectCard
+            title="Transcriber"
+            description="Desktop application for converting video and audio recordings into searchable text transcripts using OpenAI Whisper. Features batch processing, multiple accuracy levels, and real-time progress tracking."
+            tech={['Python', 'OpenAI Whisper', 'FFmpeg', 'Tkinter']}
           />
         </div>
       </section>
@@ -92,22 +115,31 @@ function ProjectCard({
   title,
   description,
   tech,
-  link
+  link,
+  featured
 }: {
   title: string;
   description: string;
   tech: string[];
   link?: string;
+  featured?: boolean;
 }) {
   const content = (
     <div className="group p-4 -mx-4 rounded-lg card-hover hover:bg-gray-50">
       <div className="flex items-start justify-between mb-2">
-        <h3 className="font-medium group-hover:text-[var(--accent)] transition-colors">
-          {title}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium group-hover:text-[var(--accent)] transition-colors">
+            {title}
+          </h3>
+          {featured && (
+            <span className="text-xs px-2 py-0.5 bg-[var(--accent)] text-white rounded">
+              Featured
+            </span>
+          )}
+        </div>
         {link && (
           <svg
-            className="w-4 h-4 text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors"
+            className="w-4 h-4 text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors flex-shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
