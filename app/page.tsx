@@ -65,9 +65,9 @@ export default function Home() {
         <h2 className="text-xl font-semibold mb-6">Projects</h2>
         <div className="space-y-6">
           <ProjectCard
-            title="Circus Archives"
-            description="Community platform preserving FSU Flying High Circus performance history. Features video uploads, performer tagging, a voting system with performer bonuses, and threaded comments."
-            tech={['Next.js', 'TypeScript', 'PostgreSQL', 'Prisma', 'NextAuth']}
+            title="Circus Video Archive"
+            description="Full-stack video archive serving FSU circus alumni with 2GB browser uploads, weighted community voting, and a hybrid YouTube upload pipeline. Live in production with real users."
+            tech={['Next.js 15', 'TypeScript', 'PostgreSQL', 'Prisma', 'Vercel Blob', 'Tailwind CSS']}
             link="https://flyinghighcircusarchives.com"
             featured
           />
