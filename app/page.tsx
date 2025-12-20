@@ -44,19 +44,6 @@ export default function Home() {
             and AI-powered tools with Python, React, and whatever gets the job done.
             Most of my recent work involves finding ways to make AI actually useful.
           </p>
-          <p>
-            Before tech, I was Head Rigger for the{' '}
-            <a
-              href="https://flyinghighcircusarchives.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--foreground)] link-underline"
-            >
-              FSU Flying High Circus
-            </a>
-            —rigging trapeze, juggling, and performing in front of thousands.
-            The precision and teamwork from circus still shapes how I approach engineering.
-          </p>
         </div>
       </section>
 
