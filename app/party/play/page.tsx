@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useSocket } from '../components/SocketProvider';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
@@ -54,8 +55,20 @@ export default function JoinPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <ConnectionStatus />
 
+      {/* Logo */}
+      <div className="mb-8">
+        <Image
+          src="/images/clowncode-logo.jpg"
+          alt="Clown Code"
+          width={200}
+          height={100}
+          className="rounded-lg"
+          priority
+        />
+      </div>
+
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">Join Game</h1>
+        <h1 className="text-4xl font-bold mb-2 text-white">Join Game</h1>
         <p className="text-gray-400">Enter the room code shown on the TV</p>
       </div>
 
