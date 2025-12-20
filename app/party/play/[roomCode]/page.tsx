@@ -44,6 +44,13 @@ export default function PlayerLobbyPage() {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
+    // Get stored player name and rejoin if needed
+    const storedName = sessionStorage.getItem('playerName');
+    if (storedName) {
+      // Re-emit join in case we disconnected during navigation
+      socket.emit('join-room', { roomCode, playerName: storedName });
+    }
+
     // Request current state
     socket.emit('request-state', { roomCode });
 
