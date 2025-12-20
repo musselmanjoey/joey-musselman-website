@@ -59,9 +59,9 @@ export default function JoinPage() {
       {/* Logo */}
       <div className="mb-8">
         <Image
-          src="/images/clowncode-logo.jpg"
+          src="/images/clowncode-logo.png"
           alt="Clown Code"
-          width={200}
+          width={300}
           height={100}
           className="rounded-lg"
           priority
