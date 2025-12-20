@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useSocket } from '../components/SocketProvider';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
-export default function JoinPage() {
+function JoinPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { socket, isConnected } = useSocket();
@@ -124,5 +124,17 @@ export default function JoinPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-400">Loading...</div>
+      </div>
+    }>
+      <JoinPageContent />
+    </Suspense>
   );
 }
