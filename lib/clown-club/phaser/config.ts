@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { LobbyScene } from './scenes/LobbyScene';
+import { BoardGameScene } from './scenes/BoardGameScene';
 
 export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
   return {
@@ -13,7 +14,7 @@ export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, LobbyScene],
+    scene: [BootScene, LobbyScene, BoardGameScene],
     physics: {
       default: 'arcade',
       arcade: {

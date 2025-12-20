@@ -2,85 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 
 export default function HomePage() {
   const router = useRouter();
   const [playerName, setPlayerName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleCreate = async () => {
+  const handleEnter = () => {
     if (!playerName.trim()) {
       setError('Please enter your name');
       return;
     }
 
     setIsLoading(true);
-    setError('');
-
-    // Reset any stale socket state before connecting
-    resetSocket();
-    const socket = connectSocket();
-
-    const doCreate = () => {
-      socket.once('cc:room-created', ({ roomCode }: { roomCode: string }) => {
-        sessionStorage.setItem('playerName', playerName);
-        router.push(`/clown-club/world/${roomCode}`);
-      });
-
-      socket.once('cc:error', ({ message }: { message: string }) => {
-        setError(message);
-        setIsLoading(false);
-      });
-
-      socket.emit('cc:create-room', { playerName });
-    };
-
-    if (socket.connected) {
-      doCreate();
-    } else {
-      socket.once('connect', doCreate);
-    }
-  };
-
-  const handleJoin = async () => {
-    if (!playerName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-    if (!roomCode.trim()) {
-      setError('Please enter a room code');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    // Reset any stale socket state before connecting
-    resetSocket();
-    const socket = connectSocket();
-
-    const doJoin = () => {
-      socket.once('cc:room-joined', ({ roomCode: code }: { roomCode: string }) => {
-        sessionStorage.setItem('playerName', playerName);
-        router.push(`/clown-club/world/${code}`);
-      });
-
-      socket.once('cc:error', ({ message }: { message: string }) => {
-        setError(message);
-        setIsLoading(false);
-      });
-
-      socket.emit('cc:join-room', { roomCode: roomCode.toUpperCase(), playerName });
-    };
-
-    if (socket.connected) {
-      doJoin();
-    } else {
-      socket.once('connect', doJoin);
-    }
+    sessionStorage.setItem('playerName', playerName.trim());
+    // Everyone joins the same persistent "LOBBY" world
+    router.push('/clown-club/world/LOBBY');
   };
 
   return (
@@ -108,53 +46,27 @@ export default function HomePage() {
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEnter()}
               placeholder="Enter your name"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               maxLength={20}
               disabled={isLoading}
+              autoFocus
             />
           </div>
 
           <button
-            onClick={handleCreate}
+            onClick={handleEnter}
             disabled={isLoading}
             className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:opacity-50"
           >
-            {isLoading ? 'Creating...' : 'Create Room'}
-          </button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or join existing</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Room Code
-            </label>
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="XXXX"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-center text-2xl tracking-widest"
-              maxLength={4}
-              disabled={isLoading}
-            />
-          </div>
-
-          <button
-            onClick={handleJoin}
-            disabled={isLoading}
-            className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition disabled:opacity-50"
-          >
-            {isLoading ? 'Joining...' : 'Join Room'}
+            {isLoading ? 'Entering...' : 'Enter World'}
           </button>
         </div>
+
+        <p className="mt-6 text-center text-gray-500 text-sm">
+          Join everyone in the same world!
+        </p>
       </div>
 
       <p className="mt-8 text-white/80 text-sm">

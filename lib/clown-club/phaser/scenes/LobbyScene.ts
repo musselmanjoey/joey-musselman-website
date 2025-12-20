@@ -3,6 +3,8 @@ import { Socket } from 'socket.io-client';
 import { Player } from '../entities/Player';
 import { RemotePlayer } from '../entities/RemotePlayer';
 import { InteractiveObject } from '../entities/InteractiveObject';
+import { GameInfo, InteractionResult, GameStartedData } from '../../types';
+import { gameEvents } from '../../gameEvents';
 
 interface PlayerData {
   id: string;
@@ -32,6 +34,9 @@ export class LobbyScene extends Phaser.Scene {
   private localPlayer?: Player;
   private remotePlayers: Map<string, RemotePlayer> = new Map();
   private interactiveObjects: InteractiveObject[] = [];
+  private boundSocketListeners: Map<string, (...args: unknown[]) => void> = new Map();
+  private waitingOverlay?: Phaser.GameObjects.Container;
+  private waitingText?: Phaser.GameObjects.Text;
 
   constructor() {
     super('LobbyScene');
@@ -320,73 +325,142 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private setupSocketListeners() {
+    // Store bound listeners so we can remove them on shutdown
+    const addListener = (event: string, handler: (...args: unknown[]) => void) => {
+      this.boundSocketListeners.set(event, handler);
+      this.socket.on(event, handler);
+    };
+
     // Initial world state
-    this.socket.on('cc:world-state', (state: WorldState) => {
-      this.handleWorldState(state);
+    addListener('cc:world-state', (state: unknown) => {
+      this.handleWorldState(state as WorldState);
     });
 
     // Player movement
-    this.socket.on('cc:player-moved', (data: { playerId: string; x: number; y: number }) => {
-      if (data.playerId === this.playerId) {
+    addListener('cc:player-moved', (data: unknown) => {
+      const { playerId, x, y } = data as { playerId: string; x: number; y: number };
+      if (playerId === this.playerId) {
         // Server reconciliation for local player (optional)
         return;
       }
-      const remote = this.remotePlayers.get(data.playerId);
+      const remote = this.remotePlayers.get(playerId);
       if (remote) {
-        remote.moveToPoint(data.x, data.y);
+        remote.moveToPoint(x, y);
       }
     });
 
     // New player joined
-    this.socket.on('cc:player-joined', (data: { playerId: string; playerName: string; x: number; y: number; character: string }) => {
-      console.log('[Clown Club] Player joined:', data);
-      if (data.playerId !== this.playerId) {
+    addListener('cc:player-joined', (data: unknown) => {
+      const playerData = data as { playerId: string; playerName: string; x: number; y: number; character: string };
+      console.log('[Clown Club] Player joined:', playerData);
+      if (playerData.playerId !== this.playerId) {
         this.addRemotePlayer({
-          id: data.playerId,
-          name: data.playerName,
-          x: data.x,
-          y: data.y,
-          character: data.character,
+          id: playerData.playerId,
+          name: playerData.playerName,
+          x: playerData.x,
+          y: playerData.y,
+          character: playerData.character,
         });
       }
     });
 
     // Player left
-    this.socket.on('cc:player-left', (data: { playerId: string }) => {
-      const remote = this.remotePlayers.get(data.playerId);
+    addListener('cc:player-left', (data: unknown) => {
+      const { playerId } = data as { playerId: string };
+      const remote = this.remotePlayers.get(playerId);
       if (remote) {
         remote.destroy();
-        this.remotePlayers.delete(data.playerId);
+        this.remotePlayers.delete(playerId);
       }
     });
 
     // Emote played
-    this.socket.on('cc:emote-played', (data: { playerId: string; emoteId: string }) => {
-      if (data.playerId === this.playerId) {
-        this.localPlayer?.showEmote(data.emoteId);
+    addListener('cc:emote-played', (data: unknown) => {
+      const { playerId, emoteId } = data as { playerId: string; emoteId: string };
+      if (playerId === this.playerId) {
+        this.localPlayer?.showEmote(emoteId);
       } else {
-        const remote = this.remotePlayers.get(data.playerId);
-        remote?.showEmote(data.emoteId);
+        const remote = this.remotePlayers.get(playerId);
+        remote?.showEmote(emoteId);
       }
     });
 
     // Interaction result
-    this.socket.on('cc:interaction-result', (data: { objectId: string; success: boolean; action?: string }) => {
-      if (data.success && data.action === 'launch-game') {
-        // TODO: Launch minigame or redirect
-        console.log('Launch game!');
+    addListener('cc:interaction-result', (data: unknown) => {
+      const result = data as InteractionResult;
+      if (result.success && result.action === 'launch-game') {
+        // Join the game queue (host will start when ready)
+        this.socket.emit('game:join-queue', { gameType: 'board-game' });
       }
     });
 
-    // Chat message
-    this.socket.on('cc:chat-message', (data: { playerId: string; playerName: string; message: string }) => {
-      if (data.playerId === this.playerId) {
-        this.localPlayer?.showChatBubble(data.message);
-      } else {
-        const remote = this.remotePlayers.get(data.playerId);
-        remote?.showChatBubble(data.message);
+    // Joined the game queue
+    addListener('game:queue-joined', (data: unknown) => {
+      const { position, totalPlayers } = data as { position: number; totalPlayers: number };
+      console.log('[Clown Club] Joined queue, position:', position);
+      this.showWaitingOverlay(totalPlayers);
+    });
+
+    // Queue update while waiting
+    addListener('game:queue-update', (data: unknown) => {
+      const { count } = data as { count: number };
+      if (count > 0 && this.waitingOverlay) {
+        this.updateWaitingOverlay(count);
       }
     });
+
+    // Left queue
+    addListener('game:queue-left', () => {
+      console.log('[Clown Club] Left queue');
+      this.hideWaitingOverlay();
+    });
+
+    // Game started - switch to game scene
+    addListener('game:started', (data: unknown) => {
+      const gameData = data as GameStartedData;
+      console.log('[Clown Club] Game started:', gameData);
+
+      // Hide waiting overlay
+      this.hideWaitingOverlay();
+
+      gameEvents.emit('game-started', gameData);
+
+      // Switch to appropriate game scene - use launch() to keep LobbyScene alive but paused
+      // Players always see mobile controller (isHost: false) - the TV spectator shows the board
+      if (gameData.gameType === 'board-game') {
+        this.scene.pause();
+        this.scene.launch('BoardGameScene', { isHost: false });
+      }
+      // Add more game types here as needed
+    });
+
+    // Chat message
+    addListener('cc:chat-message', (data: unknown) => {
+      const { playerId, playerName, message } = data as { playerId: string; playerName: string; message: string };
+      if (playerId === this.playerId) {
+        this.localPlayer?.showChatBubble(message);
+      } else {
+        const remote = this.remotePlayers.get(playerId);
+        remote?.showChatBubble(message);
+      }
+    });
+  }
+
+  // Called when scene is paused or stopped
+  private cleanupSocketListeners() {
+    for (const [event, handler] of this.boundSocketListeners.entries()) {
+      this.socket.off(event, handler);
+    }
+    this.boundSocketListeners.clear();
+  }
+
+  // Called when coming back from a game
+  resumeFromGame() {
+    this.scene.resume();
+    // Re-setup listeners since we cleaned them up
+    this.setupSocketListeners();
+    // Request fresh world state
+    this.socket.emit('cc:request-state');
   }
 
   private handleWorldState(state: WorldState) {
@@ -448,5 +522,86 @@ export class LobbyScene extends Phaser.Scene {
 
     // Update remote players (interpolation)
     this.remotePlayers.forEach((remote) => remote.update(delta));
+  }
+
+  private showWaitingOverlay(playerCount: number) {
+    if (this.waitingOverlay) return;
+
+    this.waitingOverlay = this.add.container(400, 300);
+    this.waitingOverlay.setDepth(1000);
+
+    // Dark background
+    const bg = this.add.rectangle(0, 0, 800, 600, 0x000000, 0.8);
+    this.waitingOverlay.add(bg);
+
+    // Title
+    const title = this.add.text(0, -100, '🕹️ READY TO PLAY!', {
+      fontSize: '36px',
+      color: '#00ff00',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.waitingOverlay.add(title);
+
+    // Waiting text
+    this.waitingText = this.add.text(0, -30, `${playerCount} player${playerCount !== 1 ? 's' : ''} ready`, {
+      fontSize: '24px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+    this.waitingOverlay.add(this.waitingText);
+
+    // Info text
+    const info = this.add.text(0, 30, 'Waiting for host to start...', {
+      fontSize: '20px',
+      color: '#fbbf24',
+    }).setOrigin(0.5);
+    this.waitingOverlay.add(info);
+
+    // Dots animation
+    let dots = 0;
+    this.time.addEvent({
+      delay: 500,
+      callback: () => {
+        if (info.active) {
+          dots = (dots + 1) % 4;
+          info.setText('Waiting for host to start' + '.'.repeat(dots));
+        }
+      },
+      loop: true,
+    });
+
+    // Cancel button
+    const cancelBg = this.add.rectangle(0, 120, 180, 50, 0xef4444);
+    cancelBg.setStrokeStyle(2, 0xffffff);
+    cancelBg.setInteractive({ useHandCursor: true });
+
+    const cancelText = this.add.text(0, 120, 'Leave Queue', {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.waitingOverlay.add([cancelBg, cancelText]);
+
+    cancelBg.on('pointerdown', () => {
+      this.socket.emit('game:leave-queue');
+      this.hideWaitingOverlay();
+    });
+
+    cancelBg.on('pointerover', () => cancelBg.setFillStyle(0xdc2626));
+    cancelBg.on('pointerout', () => cancelBg.setFillStyle(0xef4444));
+  }
+
+  private updateWaitingOverlay(playerCount: number) {
+    if (this.waitingText) {
+      this.waitingText.setText(`${playerCount} player${playerCount !== 1 ? 's' : ''} ready`);
+    }
+  }
+
+  private hideWaitingOverlay() {
+    if (this.waitingOverlay) {
+      this.waitingOverlay.destroy();
+      this.waitingOverlay = undefined;
+      this.waitingText = undefined;
+    }
   }
 }
