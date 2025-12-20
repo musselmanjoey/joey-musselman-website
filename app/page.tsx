@@ -7,7 +7,7 @@ export default function Home() {
       <section className="mb-16">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Joey Musselman</h1>
         <p className="text-[var(--muted)] text-lg mb-6">
-          Software Engineer at Retirement Clearing House
+          Software Engineer · Building with AI
         </p>
         <div className="flex gap-4 text-sm">
           <a
@@ -41,8 +41,8 @@ export default function Home() {
         <div className="space-y-4 text-[var(--muted)]">
           <p>
             I&apos;m a software engineer based in Charlotte, NC. I build full-stack applications
-            with .NET, React, Blazor, and Python. Currently working on fintech systems
-            that help people manage their retirement savings.
+            and AI-powered tools with Python, React, and whatever gets the job done.
+            Most of my recent work involves finding ways to make AI actually useful.
           </p>
           <p>
             Before tech, I was Head Rigger for the{' '}
