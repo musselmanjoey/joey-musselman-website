@@ -647,30 +647,27 @@ export class BoardGameScene extends Phaser.Scene {
     this.triviaContainer.setVisible(true);
     this.rollButton.setVisible(false);
 
-    this.statusText.setText('Pick your answer!');
+    // Move trivia container higher on screen for mobile
+    this.triviaContainer.setPosition(400, 320);
 
-    // Question (smaller on mobile since they see it on TV too)
-    const question = this.add.text(0, -120, data.question, {
-      fontSize: '16px',
-      color: '#ffffff',
-      wordWrap: { width: 340 },
-      align: 'center',
-    }).setOrigin(0.5);
-    this.triviaContainer.add(question);
+    this.statusText.setText('TRIVIA! Look at the TV!');
 
-    // Big touch-friendly answer buttons
+    // Don't show question on phone - it's on the TV
+    // Just show big answer buttons
+
+    // Big touch-friendly answer buttons with more space
     data.options.forEach((opt, i) => {
-      const y = -50 + i * 65;
+      const y = -100 + i * 80;
 
-      const optBg = this.add.rectangle(0, y, 340, 55, 0x3b82f6);
-      optBg.setStrokeStyle(3, 0x60a5fa);
+      const optBg = this.add.rectangle(0, y, 360, 65, 0x3b82f6);
+      optBg.setStrokeStyle(4, 0x60a5fa);
       optBg.setInteractive({ useHandCursor: true });
 
       const optText = this.add.text(0, y, `${String.fromCharCode(65 + i)}. ${opt.text}`, {
-        fontSize: '18px',
+        fontSize: '20px',
         color: '#ffffff',
         fontStyle: 'bold',
-        wordWrap: { width: 320 },
+        wordWrap: { width: 340 },
       }).setOrigin(0.5);
 
       optBg.on('pointerover', () => optBg.setAlpha(0.8));

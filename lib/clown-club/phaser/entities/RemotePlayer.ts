@@ -1,9 +1,10 @@
 import * as Phaser from 'phaser';
-import { getCharacterEmoji, emotes } from '../assets/AssetRegistry';
+import { emotes } from '../assets/AssetRegistry';
 
 export class RemotePlayer extends Phaser.GameObjects.Container {
   private emoji: Phaser.GameObjects.Text;
   private nameTag: Phaser.GameObjects.Text;
+  private crown?: Phaser.GameObjects.Text;
   private emoteText?: Phaser.GameObjects.Text;
   private chatBubble?: Phaser.GameObjects.Container;
   private targetX: number;
@@ -15,15 +16,24 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     x: number,
     y: number,
     name: string,
-    character: string
+    character: string,
+    isVIP: boolean = false
   ) {
     super(scene, x, y);
 
     this.targetX = x;
     this.targetY = y;
 
-    // Character emoji
-    this.emoji = scene.add.text(0, 0, getCharacterEmoji(character), {
+    // Crown for VIP players
+    if (isVIP) {
+      this.crown = scene.add.text(0, -30, '👑', {
+        fontSize: '24px',
+      });
+      this.crown.setOrigin(0.5);
+    }
+
+    // Character emoji (use emoji directly)
+    this.emoji = scene.add.text(0, 0, character || '🤡', {
       fontSize: '48px',
     });
     this.emoji.setOrigin(0.5);
@@ -37,9 +47,11 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     });
     this.nameTag.setOrigin(0.5);
 
-    this.add([this.emoji, this.nameTag]);
-    scene.add.existing(this);
+    const children: Phaser.GameObjects.GameObject[] = [this.emoji, this.nameTag];
+    if (this.crown) children.unshift(this.crown);
+    this.add(children);
 
+    scene.add.existing(this);
     this.setDepth(y);
   }
 

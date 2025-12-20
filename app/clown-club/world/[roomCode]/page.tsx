@@ -48,6 +48,8 @@ export default function WorldPage() {
   useEffect(() => {
     // Get player info from session storage
     const storedName = sessionStorage.getItem('playerName');
+    const storedEmoji = sessionStorage.getItem('playerEmoji') || '🤡';
+    const storedVIP = sessionStorage.getItem('isVIP') === 'true';
 
     if (!storedName) {
       // Redirect to home if no player name
@@ -65,8 +67,13 @@ export default function WorldPage() {
     const handleConnected = () => {
       setPlayerId(s.id || '');
       setIsConnected(true);
-      // Join/rejoin the room (handles both fresh join and reconnection)
-      s.emit('cc:join-room', { roomCode: roomCode.toUpperCase(), playerName: storedName });
+      // Join/rejoin the room with emoji and VIP status
+      s.emit('cc:join-room', {
+        roomCode: roomCode.toUpperCase(),
+        playerName: storedName,
+        character: storedEmoji,
+        isVIP: storedVIP,
+      });
     };
 
     // If already connected, join immediately

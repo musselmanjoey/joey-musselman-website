@@ -7,6 +7,7 @@ interface PlayerData {
   x: number;
   y: number;
   character: string;
+  isVIP?: boolean;
 }
 
 interface WorldState {
@@ -276,7 +277,7 @@ export class HostWorldScene extends Phaser.Scene {
     });
 
     // Player joined - server sends playerId/playerName, we need to map to id/name
-    this.socket.on('cc:player-joined', (data: { playerId: string; playerName: string; x: number; y: number; character: string }) => {
+    this.socket.on('cc:player-joined', (data: { playerId: string; playerName: string; x: number; y: number; character: string; isVIP?: boolean }) => {
       console.log('[HostWorld] Player joined:', data.playerName);
       this.addPlayer({
         id: data.playerId,
@@ -284,6 +285,7 @@ export class HostWorldScene extends Phaser.Scene {
         x: data.x,
         y: data.y,
         character: data.character,
+        isVIP: data.isVIP,
       });
     });
 
@@ -551,19 +553,28 @@ export class HostWorldScene extends Phaser.Scene {
     const y = data.y * scaleY;
 
     const container = this.add.container(x, y);
+    const children: Phaser.GameObjects.GameObject[] = [];
 
-    // Player body (clown emoji)
-    const body = this.add.text(0, 0, '🤡', { fontSize: '40px' }).setOrigin(0.5);
+    // Crown for VIP players
+    if (data.isVIP) {
+      const crown = this.add.text(0, -35, '👑', { fontSize: '28px' }).setOrigin(0.5);
+      children.push(crown);
+    }
+
+    // Player body (use their selected character emoji)
+    const body = this.add.text(0, 0, data.character || '🤡', { fontSize: '40px' }).setOrigin(0.5);
+    children.push(body);
 
     // Name tag
-    const name = this.add.text(0, -35, data.name, {
+    const name = this.add.text(0, 30, data.name, {
       fontSize: '14px',
       color: '#ffffff',
       backgroundColor: '#00000080',
       padding: { x: 6, y: 2 },
     }).setOrigin(0.5);
+    children.push(name);
 
-    container.add([body, name]);
+    container.add(children);
     container.setDepth(50);
 
     this.players.set(data.id, container);

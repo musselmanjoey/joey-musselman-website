@@ -12,6 +12,7 @@ interface PlayerData {
   x: number;
   y: number;
   character: string;
+  isVIP?: boolean;
 }
 
 interface ObjectData {
@@ -479,7 +480,8 @@ export class LobbyScene extends Phaser.Scene {
           playerData.x,
           playerData.y,
           playerData.name,
-          playerData.character
+          playerData.character,
+          playerData.isVIP
         );
       } else {
         // Create remote player
@@ -489,7 +491,7 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private addRemotePlayer(data: PlayerData) {
-    const remote = new RemotePlayer(this, data.x, data.y, data.name, data.character);
+    const remote = new RemotePlayer(this, data.x, data.y, data.name, data.character, data.isVIP);
     this.remotePlayers.set(data.id, remote);
   }
 

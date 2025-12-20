@@ -402,44 +402,29 @@ export class HostBoardGameScene extends Phaser.Scene {
   private showTrivia(question: string, options: TriviaOption[], timeLimit: number) {
     this.hideTrivia(); // Clean up any existing trivia first
     this.triviaContainer.setVisible(true);
-    this.statusText.setText('TRIVIA TIME! Answer on your phones!');
 
-    // Question background
-    const bg = this.add.rectangle(0, -50, 800, 300, 0x16213e);
+    // Move trivia container to top of screen, not covering the board
+    this.triviaContainer.setPosition(640, 130);
+
+    this.statusText.setText('TRIVIA! Players answering on phones...');
+
+    // Compact question background at top
+    const bg = this.add.rectangle(0, 0, 900, 120, 0x16213e);
     bg.setStrokeStyle(3, 0xfbbf24);
     this.triviaContainer.add(bg);
 
-    // Question text
-    const questionText = this.add.text(0, -120, question, {
-      fontSize: '28px',
+    // Question text - larger and readable
+    const questionText = this.add.text(0, -20, question, {
+      fontSize: '24px',
       color: '#ffffff',
-      wordWrap: { width: 700 },
+      wordWrap: { width: 850 },
       align: 'center',
     }).setOrigin(0.5);
     this.triviaContainer.add(questionText);
 
-    // Options in 2x2 grid
-    const optionColors = [0x3b82f6, 0x22c55e, 0xf59e0b, 0xef4444];
-    options.forEach((opt, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = (col - 0.5) * 350;
-      const y = -20 + row * 70;
-
-      const optBg = this.add.rectangle(x, y, 320, 55, optionColors[i]);
-      optBg.setStrokeStyle(2, 0xffffff);
-      const letter = String.fromCharCode(65 + i);
-      const optText = this.add.text(x, y, `${letter}. ${opt.text}`, {
-        fontSize: '20px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.triviaContainer.add([optBg, optText]);
-    });
-
-    // Timer
-    const timerText = this.add.text(0, 130, `${timeLimit}s`, {
-      fontSize: '36px',
+    // Timer on the right side of the question box
+    const timerText = this.add.text(380, 0, `${timeLimit}s`, {
+      fontSize: '32px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
