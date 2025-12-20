@@ -26,6 +26,16 @@ interface PlayerState {
   standings: { playerName: string; position: number; color: string }[];
 }
 
+interface TurnSummary {
+  roll: number;
+  startPosition: number;
+  endPosition: number;
+  finalPosition: number;
+  trigger?: { type: string; name: string; from: number; to: number };
+  triviaCorrect?: boolean;
+  triviaBonus?: number;
+}
+
 export default function BoardGameControllerPage() {
   const params = useParams();
   const roomCode = params.roomCode as string;
@@ -35,6 +45,9 @@ export default function BoardGameControllerPage() {
   const [lastRoll, setLastRoll] = useState<number | null>(null);
   const [answerResult, setAnswerResult] = useState<{ correct: boolean; bonus?: number } | null>(null);
   const [isRolling, setIsRolling] = useState(false);
+  const [turnSummary, setTurnSummary] = useState<TurnSummary | null>(null);
+  const [triviaTimeLeft, setTriviaTimeLeft] = useState<number>(0);
+  const [allRolledCountdown, setAllRolledCountdown] = useState<number>(0);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -48,6 +61,7 @@ export default function BoardGameControllerPage() {
     function onRoundStarted() {
       setLastRoll(null);
       setAnswerResult(null);
+      setTurnSummary(null);
       setGameState(prev => prev ? {
         ...prev,
         state: 'rolling',
@@ -63,11 +77,34 @@ export default function BoardGameControllerPage() {
       setGameState(prev => prev ? { ...prev, hasRolled: true, myRoll: roll } : null);
     }
 
+    function onAllRolled(data: { countdown: number }) {
+      setAllRolledCountdown(data.countdown);
+    }
+
     function onMovements() {
+      setAllRolledCountdown(0);
       setGameState(prev => prev ? { ...prev, state: 'moving' } : null);
     }
 
-    function onTriviaQuestion(data: { question: string; options: { id: string; text: string }[] }) {
+    function onYourMovement(data: {
+      roll: number;
+      startPosition: number;
+      endPosition: number;
+      finalPosition: number;
+      trigger?: { type: string; name: string; from: number; to: number }
+    }) {
+      // Update position and store turn summary
+      setGameState(prev => prev ? { ...prev, myPosition: data.finalPosition } : null);
+      setTurnSummary({
+        roll: data.roll,
+        startPosition: data.startPosition,
+        endPosition: data.endPosition,
+        finalPosition: data.finalPosition,
+        trigger: data.trigger,
+      });
+    }
+
+    function onTriviaQuestion(data: { question: string; options: { id: string; text: string }[]; timeLimit: number }) {
       setGameState(prev => prev ? {
         ...prev,
         state: 'trivia',
@@ -75,6 +112,7 @@ export default function BoardGameControllerPage() {
         hasAnswered: false,
       } : null);
       setAnswerResult(null);
+      setTriviaTimeLeft(data.timeLimit || 15);
     }
 
     function onAnswerResult(data: { correct: boolean; bonusMovement?: number; newPosition?: number }) {
@@ -83,6 +121,13 @@ export default function BoardGameControllerPage() {
         ...prev,
         hasAnswered: true,
         myPosition: data.newPosition ?? prev.myPosition,
+      } : null);
+      // Update turn summary with trivia result
+      setTurnSummary(prev => prev ? {
+        ...prev,
+        triviaCorrect: data.correct,
+        triviaBonus: data.bonusMovement,
+        finalPosition: data.newPosition ?? prev.finalPosition,
       } : null);
     }
 
@@ -97,7 +142,9 @@ export default function BoardGameControllerPage() {
     socket.on('state-update', onStateUpdate);
     socket.on('bg:round-started', onRoundStarted);
     socket.on('bg:your-roll', onYourRoll);
+    socket.on('bg:all-rolled', onAllRolled);
     socket.on('bg:movements', onMovements);
+    socket.on('bg:your-movement', onYourMovement);
     socket.on('bg:trivia-question', onTriviaQuestion);
     socket.on('bg:answer-result', onAnswerResult);
     socket.on('bg:round-results', onRoundResults);
@@ -107,13 +154,37 @@ export default function BoardGameControllerPage() {
       socket.off('state-update', onStateUpdate);
       socket.off('bg:round-started', onRoundStarted);
       socket.off('bg:your-roll', onYourRoll);
+      socket.off('bg:all-rolled', onAllRolled);
       socket.off('bg:movements', onMovements);
+      socket.off('bg:your-movement', onYourMovement);
       socket.off('bg:trivia-question', onTriviaQuestion);
       socket.off('bg:answer-result', onAnswerResult);
       socket.off('bg:round-results', onRoundResults);
       socket.off('bg:game-over', onGameOver);
     };
   }, [socket, isConnected, roomCode]);
+
+  // Countdown timer for trivia
+  useEffect(() => {
+    if (gameState?.state !== 'trivia' || gameState?.hasAnswered || triviaTimeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTriviaTimeLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameState?.state, gameState?.hasAnswered, triviaTimeLeft]);
+
+  // Countdown for all-rolled delay
+  useEffect(() => {
+    if (allRolledCountdown <= 0) return;
+
+    const timer = setInterval(() => {
+      setAllRolledCountdown(prev => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [allRolledCountdown]);
 
   function handleRoll() {
     if (!socket || gameState?.hasRolled) return;
@@ -172,9 +243,13 @@ export default function BoardGameControllerPage() {
               </button>
             ) : (
               <div className="text-center">
-                <div className="text-8xl font-bold mb-4">{lastRoll}</div>
-                <p className="text-gray-400">You rolled a {lastRoll}!</p>
-                <p className="text-gray-500 text-sm mt-2">Waiting for others...</p>
+                <div className="text-8xl font-bold mb-4 text-white">{lastRoll}</div>
+                <p className="text-xl text-white mb-2">You rolled a {lastRoll}!</p>
+                {allRolledCountdown > 0 ? (
+                  <p className="text-lg text-green-400">All rolled! Moving in {allRolledCountdown}...</p>
+                ) : (
+                  <p className="text-gray-400 text-sm">Waiting for others...</p>
+                )}
               </div>
             )}
           </div>
@@ -184,10 +259,10 @@ export default function BoardGameControllerPage() {
         {gameState.state === 'moving' && (
           <div className="text-center">
             <div className="text-6xl mb-4">🎯</div>
-            <h2 className="text-2xl font-bold mb-2">Moving!</h2>
+            <h2 className="text-2xl font-bold mb-2 text-white">Moving!</h2>
             <p className="text-gray-400">Watch the TV screen</p>
             {gameState.myMovement?.trigger && (
-              <div className="mt-4 bg-green-500/20 border border-green-500 px-4 py-2 rounded-lg">
+              <div className="mt-4 bg-green-500/20 border border-green-500 px-4 py-2 rounded-lg text-white">
                 {gameState.myMovement.trigger.type === 'ladder' ? '🪜' : '🎿'}
                 {gameState.myMovement.trigger.name}!
               </div>
@@ -200,7 +275,25 @@ export default function BoardGameControllerPage() {
           <div className="w-full max-w-md">
             {!gameState.hasAnswered ? (
               <>
-                <h2 className="text-xl font-bold text-center mb-6">
+                {/* Timer bar */}
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-400">Time remaining</span>
+                    <span className={`font-bold ${triviaTimeLeft <= 5 ? 'text-red-400' : 'text-white'}`}>
+                      {triviaTimeLeft}s
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        triviaTimeLeft <= 5 ? 'bg-red-500' : 'bg-purple-500'
+                      }`}
+                      style={{ width: `${(triviaTimeLeft / 15) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <h2 className="text-xl font-bold text-center mb-6 text-white">
                   {gameState.trivia.question}
                 </h2>
                 <div className="space-y-3">
@@ -209,7 +302,7 @@ export default function BoardGameControllerPage() {
                       key={opt.id}
                       onClick={() => handleAnswer(opt.id)}
                       className="w-full bg-gray-700 hover:bg-gray-600 active:bg-accent
-                                 text-left px-4 py-4 rounded-xl transition-colors"
+                                 text-left px-4 py-4 rounded-xl transition-colors text-white"
                     >
                       <span className="font-bold mr-3 text-accent">{opt.id.toUpperCase()}.</span>
                       {opt.text}
@@ -241,7 +334,7 @@ export default function BoardGameControllerPage() {
         {gameState.state === 'results' && (
           <div className="text-center">
             <div className="text-6xl mb-4">📊</div>
-            <h2 className="text-2xl font-bold mb-2">Round Complete!</h2>
+            <h2 className="text-2xl font-bold mb-2 text-white">Round Complete!</h2>
             <p className="text-gray-400">You're on space {gameState.myPosition}</p>
             <p className="text-gray-500 text-sm mt-2">Waiting for next round...</p>
           </div>
@@ -251,14 +344,54 @@ export default function BoardGameControllerPage() {
         {gameState.state === 'gameover' && (
           <div className="text-center">
             <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-3xl font-bold mb-2">Game Over!</h2>
+            <h2 className="text-3xl font-bold mb-2 text-white">Game Over!</h2>
             <p className="text-gray-400">Check the TV for results</p>
           </div>
         )}
       </div>
 
+      {/* Turn Summary */}
+      {turnSummary && (
+        <div className="mt-4 bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <h3 className="text-sm text-gray-400 mb-2">This Turn</h3>
+          <div className="flex flex-wrap gap-2">
+            {/* Roll */}
+            <div className="bg-blue-500/20 border border-blue-500/50 px-3 py-1 rounded-full text-sm text-white">
+              🎲 Rolled {turnSummary.roll}
+            </div>
+            {/* Movement */}
+            <div className="bg-gray-600/50 px-3 py-1 rounded-full text-sm text-white">
+              {turnSummary.startPosition} → {turnSummary.endPosition}
+            </div>
+            {/* Ladder/Chute trigger */}
+            {turnSummary.trigger && (
+              <div className={`px-3 py-1 rounded-full text-sm text-white ${
+                turnSummary.trigger.type === 'ladder'
+                  ? 'bg-green-500/20 border border-green-500/50'
+                  : 'bg-red-500/20 border border-red-500/50'
+              }`}>
+                {turnSummary.trigger.type === 'ladder' ? '🪜' : '🎢'} {turnSummary.trigger.name}
+                <span className="text-xs ml-1 opacity-70">
+                  ({turnSummary.endPosition} → {turnSummary.finalPosition})
+                </span>
+              </div>
+            )}
+            {/* Trivia result */}
+            {turnSummary.triviaCorrect !== undefined && (
+              <div className={`px-3 py-1 rounded-full text-sm text-white ${
+                turnSummary.triviaCorrect
+                  ? 'bg-green-500/20 border border-green-500/50'
+                  : 'bg-gray-600/50'
+              }`}>
+                {turnSummary.triviaCorrect ? `✅ +${turnSummary.triviaBonus}` : '❌ Trivia'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Footer: Position */}
-      <div className="mt-6 bg-gray-800/50 rounded-xl p-4">
+      <div className="mt-4 bg-gray-800/50 rounded-xl p-4">
         <div className="flex justify-between items-center">
           <span className="text-gray-400">Your Position</span>
           <span className="text-2xl font-bold">{gameState.myPosition} / 50</span>
