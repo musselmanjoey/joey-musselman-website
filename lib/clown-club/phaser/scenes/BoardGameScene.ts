@@ -80,130 +80,61 @@ export class BoardGameScene extends Phaser.Scene {
   }
 
   private createPlayerView() {
-    // Mobile-friendly player controller
+    // Mobile-friendly player controller (800x600 canvas scaled with FIT mode)
     const playerName = this.registry.get('playerName') || 'Player';
-    const { width, height } = this.scale.gameSize;
-    const centerX = width / 2;
-
-    // Create a container for all player UI elements (makes repositioning easier)
-    const playerUIContainer = this.add.container(0, 0);
-    playerUIContainer.setName('playerUI');
 
     // Full-screen background
-    const bg = this.add.rectangle(centerX, height / 2, width, height, BOARD_COLORS.background);
-    playerUIContainer.add(bg);
+    this.add.rectangle(400, 300, 800, 600, BOARD_COLORS.background);
 
     // Large title
-    const title = this.add.text(centerX, height * 0.08, '🎲 Board Rush', {
+    this.add.text(400, 50, '🎲 Board Rush', {
       fontSize: '36px',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
-    playerUIContainer.add(title);
 
     // Player name
-    const nameText = this.add.text(centerX, height * 0.15, playerName, {
+    this.add.text(400, 100, playerName, {
       fontSize: '24px',
       color: '#60a5fa',
     }).setOrigin(0.5);
-    playerUIContainer.add(nameText);
 
     // Status text - large and centered
-    this.statusText = this.add.text(centerX, height * 0.25, 'Waiting for game...', {
+    this.statusText = this.add.text(400, 170, 'Waiting for game...', {
       fontSize: '22px',
       color: '#ffffff',
       align: 'center',
-      wordWrap: { width: width * 0.9 },
+      wordWrap: { width: 700 },
     }).setOrigin(0.5);
-    playerUIContainer.add(this.statusText);
 
     // My position display
-    this.myPositionText = this.add.text(centerX, height * 0.33, 'Position: 1 / 50', {
+    this.myPositionText = this.add.text(400, 230, 'Position: 1 / 50', {
       fontSize: '28px',
       color: '#4ade80',
       fontStyle: 'bold',
     }).setOrigin(0.5);
-    playerUIContainer.add(this.myPositionText);
 
     // Roll result display (hidden initially)
-    this.rollResultText = this.add.text(centerX, height * 0.42, '', {
+    this.rollResultText = this.add.text(400, 300, '', {
       fontSize: '64px',
     }).setOrigin(0.5);
-    playerUIContainer.add(this.rollResultText);
 
     // Big roll button for mobile - centered and large
-    const buttonWidth = Math.min(width * 0.8, 300);
-    this.rollButton = this.createMobileButton(centerX, height * 0.58, 'ROLL DICE 🎲', () => {
+    this.rollButton = this.createMobileButton(400, 400, 'ROLL DICE 🎲', () => {
       this.socket.emit('bg:roll-dice');
       this.rollButton.setVisible(false);
       this.statusText.setText('Rolling...');
-    }, 0x3b82f6, buttonWidth, 70);
+    }, 0x3b82f6, 300, 80);
     this.rollButton.setVisible(false);
-    playerUIContainer.add(this.rollButton);
 
     // Trivia container (hidden initially)
-    this.triviaContainer = this.add.container(centerX, height * 0.55);
+    this.triviaContainer = this.add.container(400, 380);
     this.triviaContainer.setVisible(false);
-    playerUIContainer.add(this.triviaContainer);
 
     // Leave button - smaller, at bottom
-    const leaveBtn = this.createMobileButton(centerX, height * 0.90, 'Leave Game', () => {
+    this.createMobileButton(400, 550, 'Leave Game', () => {
       this.socket.emit('game:leave');
-    }, 0xef4444, 150, 45);
-    playerUIContainer.add(leaveBtn);
-
-    // Handle resize events
-    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
-      this.repositionPlayerUI(gameSize.width, gameSize.height);
-    });
-  }
-
-  private repositionPlayerUI(width: number, height: number) {
-    const centerX = width / 2;
-
-    // Update background
-    const playerUI = this.children.getByName('playerUI') as Phaser.GameObjects.Container;
-    if (!playerUI) return;
-
-    // Find and update each element
-    playerUI.each((child: Phaser.GameObjects.GameObject) => {
-      if (child instanceof Phaser.GameObjects.Rectangle) {
-        child.setPosition(centerX, height / 2);
-        child.setSize(width, height);
-      }
-    });
-
-    // Reposition fixed UI elements by their approximate purpose
-    const title = playerUI.getAt(1) as Phaser.GameObjects.Text;
-    if (title) title.setPosition(centerX, height * 0.08);
-
-    const nameText = playerUI.getAt(2) as Phaser.GameObjects.Text;
-    if (nameText) nameText.setPosition(centerX, height * 0.15);
-
-    if (this.statusText) {
-      this.statusText.setPosition(centerX, height * 0.25);
-      this.statusText.setWordWrapWidth(width * 0.9);
-    }
-
-    if (this.myPositionText) {
-      this.myPositionText.setPosition(centerX, height * 0.33);
-    }
-
-    if (this.rollResultText) {
-      this.rollResultText.setPosition(centerX, height * 0.42);
-    }
-
-    if (this.rollButton) {
-      this.rollButton.setPosition(centerX, height * 0.58);
-    }
-
-    if (this.triviaContainer) {
-      this.triviaContainer.setPosition(centerX, height * 0.55);
-    }
-
-    // Leave button is the last item
-    const leaveBtn = playerUI.getAt(playerUI.length - 1) as Phaser.GameObjects.Container;
-    if (leaveBtn) leaveBtn.setPosition(centerX, height * 0.90);
+    }, 0xef4444, 160, 50);
   }
 
   private createMobileButton(
@@ -718,14 +649,11 @@ export class BoardGameScene extends Phaser.Scene {
 
     this.statusText.setText('Pick your answer!');
 
-    const { width } = this.scale.gameSize;
-    const buttonWidth = Math.min(width * 0.9, 340);
-
     // Question (smaller on mobile since they see it on TV too)
     const question = this.add.text(0, -120, data.question, {
       fontSize: '16px',
       color: '#ffffff',
-      wordWrap: { width: buttonWidth },
+      wordWrap: { width: 340 },
       align: 'center',
     }).setOrigin(0.5);
     this.triviaContainer.add(question);
@@ -734,7 +662,7 @@ export class BoardGameScene extends Phaser.Scene {
     data.options.forEach((opt, i) => {
       const y = -50 + i * 65;
 
-      const optBg = this.add.rectangle(0, y, buttonWidth, 55, 0x3b82f6);
+      const optBg = this.add.rectangle(0, y, 340, 55, 0x3b82f6);
       optBg.setStrokeStyle(3, 0x60a5fa);
       optBg.setInteractive({ useHandCursor: true });
 
@@ -742,7 +670,7 @@ export class BoardGameScene extends Phaser.Scene {
         fontSize: '18px',
         color: '#ffffff',
         fontStyle: 'bold',
-        wordWrap: { width: buttonWidth - 20 },
+        wordWrap: { width: 320 },
       }).setOrigin(0.5);
 
       optBg.on('pointerover', () => optBg.setAlpha(0.8));

@@ -107,13 +107,13 @@ export default function HostPage() {
 
       {/* QR Code and Room info */}
       <div className="fixed top-4 left-4 z-20 flex items-start gap-4">
-        <div className="bg-white p-2 rounded-lg shadow-lg">
+        <div className="bg-white p-3 rounded-lg shadow-lg">
           <QRCodeSVG
             value="https://joeymusselman.com/clown-club"
-            size={80}
+            size={120}
             level="M"
           />
-          <p className="text-xs text-center mt-1 text-gray-600 font-medium">Scan to join</p>
+          <p className="text-sm text-center mt-2 text-gray-600 font-medium">Scan to join</p>
         </div>
         <div className="bg-black/50 text-white px-4 py-2 rounded-lg">
           <span className="text-sm opacity-70">Room:</span>{' '}

@@ -63,14 +63,31 @@ export class HostBoardGameScene extends Phaser.Scene {
       color: '#ffffff',
     }).setOrigin(0.5);
 
-    // Standings panel on the right
-    this.add.rectangle(1140, 360, 240, 500, 0x16213e).setStrokeStyle(2, 0x3b82f6);
-    this.add.text(1140, 130, 'STANDINGS', {
+    // Standings panel on the right (shorter to make room for legend)
+    this.add.rectangle(1140, 280, 240, 280, 0x16213e).setStrokeStyle(2, 0x3b82f6);
+    this.add.text(1140, 155, 'STANDINGS', {
       fontSize: '24px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.standingsContainer = this.add.container(1140, 180);
+    this.standingsContainer = this.add.container(1140, 190);
+
+    // Legend panel - chutes and ladders
+    this.add.rectangle(1140, 540, 240, 200, 0x16213e).setStrokeStyle(2, 0x3b82f6);
+
+    // Ladders
+    this.add.text(1070, 455, '🪜 LADDERS', { fontSize: '14px', color: '#4ade80', fontStyle: 'bold' });
+    const ladders = [[4,14], [9,22], [18,31], [28,42], [32,44]];
+    ladders.forEach((l, i) => {
+      this.add.text(1070, 475 + i * 16, `${l[0]} → ${l[1]}`, { fontSize: '12px', color: '#4ade80' });
+    });
+
+    // Chutes
+    this.add.text(1160, 455, '🎢 CHUTES', { fontSize: '14px', color: '#f87171', fontStyle: 'bold' });
+    const chutes = [[16,6], [34,24], [49,39]];
+    chutes.forEach((c, i) => {
+      this.add.text(1160, 475 + i * 16, `${c[0]} → ${c[1]}`, { fontSize: '12px', color: '#f87171' });
+    });
 
     // Trivia container (hidden initially) - high depth to show above tokens
     this.triviaContainer = this.add.container(640, 400);
@@ -164,38 +181,6 @@ export class HostBoardGameScene extends Phaser.Scene {
       }
     });
 
-    // Legend - show all chutes and ladders with destinations
-    const legendStartY = 420;
-    this.add.rectangle(1140, legendStartY + 100, 200, 220, 0x16213e).setStrokeStyle(1, 0x3b82f6);
-
-    // Ladders section
-    this.add.text(1140, legendStartY, '🪜 LADDERS', {
-      fontSize: '14px',
-      color: '#4ade80',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    ladders.forEach((l, i) => {
-      this.add.text(1140, legendStartY + 20 + i * 18, `${l.start} → ${l.end}`, {
-        fontSize: '13px',
-        color: '#4ade80'
-      }).setOrigin(0.5);
-    });
-
-    // Chutes section
-    const chutesStartY = legendStartY + 115;
-    this.add.text(1140, chutesStartY, '🎢 CHUTES', {
-      fontSize: '14px',
-      color: '#f87171',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    chutes.forEach((c, i) => {
-      this.add.text(1140, chutesStartY + 20 + i * 18, `${c.start} → ${c.end}`, {
-        fontSize: '13px',
-        color: '#f87171'
-      }).setOrigin(0.5);
-    });
   }
 
   private setupSocketListeners() {
