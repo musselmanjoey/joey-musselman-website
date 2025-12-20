@@ -18,7 +18,7 @@ interface GameSelectorProps {
 export function GameSelector({ games, selectedGame, onSelect, playerCount }: GameSelectorProps) {
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold text-gray-200">Select a Game</h3>
+      <h3 className="text-xl font-semibold text-[var(--foreground)]">Select a Game</h3>
       <div className="grid gap-3">
         {games.map((game) => {
           const isSelected = selectedGame === game.id;
@@ -33,16 +33,16 @@ export function GameSelector({ games, selectedGame, onSelect, playerCount }: Gam
               className={`
                 p-4 rounded-xl text-left transition-all border-2
                 ${isSelected
-                  ? 'bg-accent/20 border-accent'
-                  : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                  ? 'bg-red-50 border-accent'
+                  : 'bg-gray-50 border-[var(--border)] hover:border-accent/50'
                 }
                 ${!canPlay ? 'opacity-50' : ''}
               `}
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h4 className="font-semibold text-lg text-white">{game.name}</h4>
-                  <p className="text-gray-400 text-sm mt-1">{game.description}</p>
+                  <h4 className="font-semibold text-lg text-[var(--foreground)]">{game.name}</h4>
+                  <p className="text-[var(--muted)] text-sm mt-1">{game.description}</p>
                 </div>
                 {isSelected && (
                   <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
@@ -52,15 +52,15 @@ export function GameSelector({ games, selectedGame, onSelect, playerCount }: Gam
                   </div>
                 )}
               </div>
-              <div className="mt-2 text-xs text-gray-500">
+              <div className="mt-2 text-xs text-[var(--muted)]">
                 {game.minPlayers}-{game.maxPlayers} players
                 {!hasEnoughPlayers && (
-                  <span className="text-yellow-500 ml-2">
+                  <span className="text-yellow-600 ml-2">
                     (need {game.minPlayers - playerCount} more)
                   </span>
                 )}
                 {tooManyPlayers && (
-                  <span className="text-red-500 ml-2">
+                  <span className="text-red-600 ml-2">
                     (too many players)
                   </span>
                 )}

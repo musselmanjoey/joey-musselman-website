@@ -83,38 +83,38 @@ export default function PlayerLobbyPage() {
   }, [socket, isConnected, roomCode, router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-white">
       <ConnectionStatus />
 
       <div className="text-center mb-8">
-        <div className="inline-block bg-gray-800 px-4 py-2 rounded-lg mb-4">
-          <span className="text-2xl font-mono tracking-wider">{roomCode}</span>
+        <div className="inline-block bg-gray-50 border border-[var(--border)] px-4 py-2 rounded-lg mb-4">
+          <span className="text-2xl font-mono tracking-wider text-[var(--foreground)]">{roomCode}</span>
         </div>
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="text-3xl font-bold mb-2 text-[var(--foreground)]">
           {myName ? `Welcome, ${myName}!` : 'Joined!'}
         </h1>
       </div>
 
       {/* Waiting State */}
-      <div className="bg-gray-800/50 rounded-xl p-8 text-center max-w-sm w-full">
+      <div className="bg-gray-50 border border-[var(--border)] rounded-xl p-8 text-center max-w-sm w-full">
         {gameInfo ? (
           <>
             <div className="mb-4">
-              <p className="text-gray-400 text-sm">Selected Game</p>
+              <p className="text-[var(--muted)] text-sm">Selected Game</p>
               <h2 className="text-2xl font-bold text-accent">{gameInfo.name}</h2>
             </div>
-            <div className="flex items-center justify-center gap-2 text-gray-400">
+            <div className="flex items-center justify-center gap-2 text-[var(--muted)]">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span>Waiting for host to start...</span>
             </div>
           </>
         ) : (
           <>
-            <div className="flex items-center justify-center gap-2 text-gray-400 mb-4">
+            <div className="flex items-center justify-center gap-2 text-[var(--muted)] mb-4">
               <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
               <span>Waiting for host to select a game...</span>
             </div>
-            <p className="text-gray-500 text-sm">
+            <p className="text-[var(--muted)] text-sm">
               Look at the TV screen to see what's happening
             </p>
           </>
@@ -123,7 +123,7 @@ export default function PlayerLobbyPage() {
 
       {/* Player Count */}
       {room && (
-        <div className="mt-8 text-gray-500 text-sm">
+        <div className="mt-8 text-[var(--muted)] text-sm">
           {room.players.length} player{room.players.length !== 1 ? 's' : ''} in room
         </div>
       )}

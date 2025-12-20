@@ -33,12 +33,12 @@ export default function HostPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-white">
       <ConnectionStatus />
 
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Host a Game</h1>
-        <p className="text-gray-400">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-[var(--foreground)]">Host a Game</h1>
+        <p className="text-[var(--muted)]">
           Create a room and invite your friends
         </p>
       </div>
@@ -57,7 +57,7 @@ export default function HostPage() {
       </button>
 
       {!isConnected && (
-        <p className="mt-4 text-yellow-500 text-sm">
+        <p className="mt-4 text-yellow-600 text-sm">
           Connecting to server...
         </p>
       )}

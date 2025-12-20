@@ -116,7 +116,7 @@ export default function HostLobbyPage() {
     playerCount <= selectedGameInfo.maxPlayers;
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 bg-white">
       <ConnectionStatus />
 
       {error && (
@@ -130,11 +130,11 @@ export default function HostLobbyPage() {
         <div className="flex flex-col items-center mb-12 gap-6">
           <RoomCodeDisplay code={roomCode} />
           {joinUrl && (
-            <div className="bg-white p-4 rounded-xl">
+            <div className="border-2 border-[var(--border)] p-4 rounded-xl">
               <QRCodeSVG value={joinUrl} size={160} />
             </div>
           )}
-          <p className="text-gray-400 text-sm">Scan to join on your phone</p>
+          <p className="text-[var(--muted)] text-sm">Scan to join on your phone</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -163,7 +163,7 @@ export default function HostLobbyPage() {
             onClick={handleStartGame}
             disabled={!canStart}
             className={`
-              bg-green-600 hover:bg-green-500 text-white font-bold
+              bg-accent hover:bg-accent-hover text-white font-bold
               py-4 px-16 rounded-xl text-xl transition-all
               disabled:opacity-50 disabled:cursor-not-allowed
             `}

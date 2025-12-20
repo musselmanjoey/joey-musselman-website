@@ -11,13 +11,13 @@ export function RoomCodeDisplay({ code, size = 'large' }: RoomCodeDisplayProps) 
 
   return (
     <div className="text-center">
-      <p className="text-gray-400 text-sm uppercase tracking-wider mb-2">Room Code</p>
-      <div className={`${padding} bg-gray-800 rounded-2xl inline-block border-2 border-gray-700`}>
-        <span className={`${textSize} font-bold tracking-[0.2em] text-white font-mono`}>
+      <p className="text-[var(--muted)] text-sm uppercase tracking-wider mb-2">Room Code</p>
+      <div className={`${padding} bg-white rounded-2xl inline-block border-2 border-[var(--border)]`}>
+        <span className={`${textSize} font-bold tracking-[0.2em] text-[var(--foreground)] font-mono`}>
           {code}
         </span>
       </div>
-      <p className="text-gray-500 text-sm mt-3">
+      <p className="text-[var(--muted)] text-sm mt-3">
         Join at <span className="text-accent font-medium">joeymusselman.com/party/play</span>
       </p>
     </div>

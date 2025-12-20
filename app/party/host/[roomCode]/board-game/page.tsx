@@ -202,28 +202,28 @@ export default function BoardGameTVPage() {
 
   if (!gameState) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-400">Loading game...</div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-xl text-[var(--muted)]">Loading game...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-white">
       <ConnectionStatus />
 
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Board Rush</h1>
-          <p className="text-gray-400">Round {gameState.round}</p>
+          <h1 className="text-3xl font-bold text-[var(--foreground)]">Board Rush</h1>
+          <p className="text-[var(--muted)]">Round {gameState.round}</p>
         </div>
         <RoomCodeDisplay code={roomCode} size="small" />
       </div>
 
       <div className="grid grid-cols-3 gap-6 h-[calc(100vh-140px)]">
         {/* Left: Game Board */}
-        <div className="col-span-2 bg-gray-800/50 rounded-2xl p-6 border border-gray-700">
+        <div className="col-span-2 bg-gray-50 rounded-2xl p-6 border border-[var(--border)]">
           <BoardDisplay
             positions={gameState.positions}
             board={gameState.board}
@@ -234,7 +234,7 @@ export default function BoardGameTVPage() {
         {/* Right: Status Panel */}
         <div className="space-y-4">
           {/* Phase Indicator */}
-          <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <div className="bg-gray-50 rounded-xl p-4 border border-[var(--border)]">
             <PhaseDisplay
               state={gameState.state}
               rolls={gameState.rolls}
@@ -246,21 +246,21 @@ export default function BoardGameTVPage() {
           </div>
 
           {/* Standings */}
-          <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-1">
-            <h3 className="text-lg font-semibold mb-3 text-white">Standings</h3>
+          <div className="bg-gray-50 rounded-xl p-4 border border-[var(--border)] flex-1">
+            <h3 className="text-lg font-semibold mb-3 text-[var(--foreground)]">Standings</h3>
             <div className="space-y-2">
               {gameState.standings.map((player, index) => (
                 <div
                   key={player.playerId}
-                  className="flex items-center gap-3 px-3 py-2 bg-gray-700/50 rounded-lg"
+                  className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-[var(--border)]"
                 >
-                  <span className="text-gray-500 w-6">{index + 1}.</span>
+                  <span className="text-[var(--muted)] w-6">{index + 1}.</span>
                   <div
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: player.color }}
                   />
-                  <span className="flex-1 text-white">{player.playerName}</span>
-                  <span className="text-gray-400">Space {player.position}</span>
+                  <span className="flex-1 text-[var(--foreground)]">{player.playerName}</span>
+                  <span className="text-[var(--muted)]">Space {player.position}</span>
                 </div>
               ))}
             </div>
@@ -534,12 +534,12 @@ function BoardDisplay({
       {movements && movements.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {movements.map(m => (
-            <div key={m.playerId} className="bg-gray-700 rounded-lg px-3 py-1 text-sm flex items-center gap-2">
+            <div key={m.playerId} className="bg-white border border-[var(--border)] rounded-lg px-3 py-1 text-sm flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: m.color }} />
-              <span>{m.playerName}</span>
-              <span className="text-gray-400">rolled {m.roll}</span>
+              <span className="text-[var(--foreground)]">{m.playerName}</span>
+              <span className="text-[var(--muted)]">rolled {m.roll}</span>
               {m.trigger && (
-                <span className={m.trigger.type === 'ladder' ? 'text-green-400' : 'text-red-400'}>
+                <span className={m.trigger.type === 'ladder' ? 'text-green-600' : 'text-red-600'}>
                   {m.trigger.type === 'ladder' ? '🪜' : '🎢'} {m.trigger.name}
                 </span>
               )}
@@ -571,15 +571,15 @@ function PhaseDisplay({
     const waiting = rolls.filter(r => !r.hasRolled);
     return (
       <div>
-        <h3 className="text-lg font-semibold mb-3 text-yellow-400">Rolling Phase</h3>
-        <p className="text-gray-400 mb-2">Waiting for players to roll:</p>
+        <h3 className="text-lg font-semibold mb-3 text-yellow-600">Rolling Phase</h3>
+        <p className="text-[var(--muted)] mb-2">Waiting for players to roll:</p>
         <div className="space-y-1">
           {waiting.map(r => (
-            <div key={r.playerName} className="text-gray-300">{r.playerName}</div>
+            <div key={r.playerName} className="text-[var(--foreground)]">{r.playerName}</div>
           ))}
         </div>
         {rolls.filter(r => r.hasRolled).map(r => (
-          <div key={r.playerName} className="text-green-400">
+          <div key={r.playerName} className="text-green-600">
             {r.playerName} rolled {r.roll}
           </div>
         ))}
@@ -590,8 +590,8 @@ function PhaseDisplay({
   if (state === 'moving') {
     return (
       <div>
-        <h3 className="text-lg font-semibold mb-3 text-blue-400">Moving!</h3>
-        <p className="text-gray-400">Watch the board...</p>
+        <h3 className="text-lg font-semibold mb-3 text-blue-600">Moving!</h3>
+        <p className="text-[var(--muted)]">Watch the board...</p>
       </div>
     );
   }
@@ -600,30 +600,30 @@ function PhaseDisplay({
     return (
       <div>
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold text-purple-400">Trivia Time!</h3>
-          <span className={`text-2xl font-bold ${triviaTimeLeft <= 5 ? 'text-red-400' : 'text-white'}`}>
+          <h3 className="text-lg font-semibold text-accent">Trivia Time!</h3>
+          <span className={`text-2xl font-bold ${triviaTimeLeft <= 5 ? 'text-red-600' : 'text-[var(--foreground)]'}`}>
             {triviaTimeLeft}s
           </span>
         </div>
         {/* Timer bar */}
-        <div className="h-2 bg-gray-700 rounded-full overflow-hidden mb-4">
+        <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-4">
           <div
             className={`h-full rounded-full transition-all duration-1000 ${
-              triviaTimeLeft <= 5 ? 'bg-red-500' : 'bg-purple-500'
+              triviaTimeLeft <= 5 ? 'bg-red-500' : 'bg-accent'
             }`}
             style={{ width: `${(triviaTimeLeft / 15) * 100}%` }}
           />
         </div>
-        <p className="text-xl mb-4 text-white">{trivia.question}</p>
+        <p className="text-xl mb-4 text-[var(--foreground)]">{trivia.question}</p>
         <div className="space-y-2 mb-4">
           {trivia.options.map(opt => (
-            <div key={opt.id} className="bg-gray-700 px-3 py-2 rounded-lg text-white">
-              <span className="font-bold mr-2">{opt.id.toUpperCase()}.</span>
+            <div key={opt.id} className="bg-white border border-[var(--border)] px-3 py-2 rounded-lg text-[var(--foreground)]">
+              <span className="font-bold mr-2 text-accent">{opt.id.toUpperCase()}.</span>
               {opt.text}
             </div>
           ))}
         </div>
-        <p className="text-gray-400">
+        <p className="text-[var(--muted)]">
           {trivia.answeredCount}/{trivia.totalPlayers} answered
         </p>
       </div>
@@ -633,16 +633,16 @@ function PhaseDisplay({
   if (state === 'results' && lastResults) {
     return (
       <div>
-        <h3 className="text-lg font-semibold mb-3 text-green-400">Results</h3>
+        <h3 className="text-lg font-semibold mb-3 text-green-600">Results</h3>
         {lastResults.correctAnswer && (
-          <p className="mb-3 text-white">
-            Answer: <span className="text-green-400">{lastResults.correctAnswer.text}</span>
+          <p className="mb-3 text-[var(--foreground)]">
+            Answer: <span className="text-green-600">{lastResults.correctAnswer.text}</span>
           </p>
         )}
         {lastResults.triviaResults && (
           <div className="space-y-1 mb-4">
             {lastResults.triviaResults.map(r => (
-              <div key={r.playerName} className={r.correct ? 'text-green-400' : 'text-gray-500'}>
+              <div key={r.playerName} className={r.correct ? 'text-green-600' : 'text-[var(--muted)]'}>
                 {r.correct ? '✓' : '✗'} {r.playerName}
               </div>
             ))}
@@ -661,11 +661,11 @@ function PhaseDisplay({
   if (state === 'gameover') {
     return (
       <div className="text-center">
-        <h3 className="text-3xl font-bold mb-3 text-yellow-400">Game Over!</h3>
-        <p className="text-xl text-white">🎉 Winner above! 🎉</p>
+        <h3 className="text-3xl font-bold mb-3 text-yellow-600">Game Over!</h3>
+        <p className="text-xl text-[var(--foreground)]">🎉 Winner above! 🎉</p>
       </div>
     );
   }
 
-  return <div className="text-gray-400">Loading...</div>;
+  return <div className="text-[var(--muted)]">Loading...</div>;
 }

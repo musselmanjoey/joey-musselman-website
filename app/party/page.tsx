@@ -1,18 +1,24 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { ConnectionStatus } from './components/ConnectionStatus';
 
 export default function PartyLandingPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-white">
       <ConnectionStatus />
 
       <div className="text-center mb-12">
-        <h1 className="text-5xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-          Party Games
-        </h1>
-        <p className="text-gray-400 text-lg">
+        <Image
+          src="/images/clowncode-logo.png"
+          alt="Clown Code"
+          width={350}
+          height={120}
+          className="mx-auto mb-6"
+          priority
+        />
+        <p className="text-[var(--muted)] text-lg">
           Jackbox-style multiplayer fun
         </p>
       </div>
@@ -26,13 +32,13 @@ export default function PartyLandingPage() {
         </Link>
         <Link
           href="/party/play"
-          className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-4 px-8 rounded-xl text-center text-lg transition-colors"
+          className="flex-1 border-2 border-[var(--border)] hover:border-accent text-[var(--foreground)] font-semibold py-4 px-8 rounded-xl text-center text-lg transition-colors"
         >
           Join a Game
         </Link>
       </div>
 
-      <div className="mt-16 text-center text-gray-500 text-sm">
+      <div className="mt-16 text-center text-[var(--muted)] text-sm">
         <p>Host opens on a TV or laptop</p>
         <p>Players join on their phones</p>
       </div>

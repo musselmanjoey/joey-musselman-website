@@ -53,7 +53,7 @@ function JoinPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-white">
       <ConnectionStatus />
 
       {/* Logo */}
@@ -63,49 +63,48 @@ function JoinPageContent() {
           alt="Clown Code"
           width={300}
           height={100}
-          className="rounded-lg"
           priority
         />
       </div>
 
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2 text-white">Join Game</h1>
-        <p className="text-gray-400">Enter the room code shown on the TV</p>
+        <h1 className="text-4xl font-bold mb-2 text-[var(--foreground)]">Join Game</h1>
+        <p className="text-[var(--muted)]">Enter the room code shown on the TV</p>
       </div>
 
       <form onSubmit={handleJoin} className="w-full max-w-sm space-y-4">
         {/* Room Code Input */}
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Room Code</label>
+          <label className="block text-sm text-[var(--muted)] mb-2">Room Code</label>
           <input
             type="text"
             value={roomCode}
             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
             placeholder="ABCD"
             maxLength={4}
-            className="w-full bg-gray-800 border-2 border-gray-700 rounded-xl px-4 py-3
-                       text-center text-3xl font-mono tracking-[0.3em] uppercase
+            className="w-full bg-white border-2 border-[var(--border)] rounded-xl px-4 py-3
+                       text-center text-3xl font-mono tracking-[0.3em] uppercase text-[var(--foreground)]
                        focus:border-accent focus:outline-none transition-colors"
           />
         </div>
 
         {/* Player Name Input */}
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Your Name</label>
+          <label className="block text-sm text-[var(--muted)] mb-2">Your Name</label>
           <input
             type="text"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
             placeholder="Enter your name"
             maxLength={20}
-            className="w-full bg-gray-800 border-2 border-gray-700 rounded-xl px-4 py-3
-                       text-center text-xl
+            className="w-full bg-white border-2 border-[var(--border)] rounded-xl px-4 py-3
+                       text-center text-xl text-[var(--foreground)]
                        focus:border-accent focus:outline-none transition-colors"
           />
         </div>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-2 rounded-lg text-center">
+          <div className="bg-red-50 border border-red-500 text-red-600 px-4 py-2 rounded-lg text-center">
             {error}
           </div>
         )}
@@ -130,8 +129,8 @@ function JoinPageContent() {
 export default function JoinPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-400">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-xl text-[var(--muted)]">Loading...</div>
       </div>
     }>
       <JoinPageContent />
