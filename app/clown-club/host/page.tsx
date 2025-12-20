@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { QRCodeSVG } from 'qrcode.react';
 import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 import { Socket } from 'socket.io-client';
 
@@ -104,10 +105,20 @@ export default function HostPage() {
         <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
       </div>
 
-      {/* Room info */}
-      <div className="fixed top-4 left-4 z-20 bg-black/50 text-white px-4 py-2 rounded-lg">
-        <span className="text-sm opacity-70">Room:</span>{' '}
-        <span className="font-mono font-bold text-2xl">{roomCode}</span>
+      {/* QR Code and Room info */}
+      <div className="fixed top-4 left-4 z-20 flex items-start gap-4">
+        <div className="bg-white p-2 rounded-lg shadow-lg">
+          <QRCodeSVG
+            value="https://joeymusselman.com/clown-club"
+            size={80}
+            level="M"
+          />
+          <p className="text-xs text-center mt-1 text-gray-600 font-medium">Scan to join</p>
+        </div>
+        <div className="bg-black/50 text-white px-4 py-2 rounded-lg">
+          <span className="text-sm opacity-70">Room:</span>{' '}
+          <span className="font-mono font-bold text-2xl">{roomCode}</span>
+        </div>
       </div>
 
       {/* Phaser game display */}

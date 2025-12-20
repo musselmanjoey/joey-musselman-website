@@ -164,10 +164,38 @@ export class HostBoardGameScene extends Phaser.Scene {
       }
     });
 
-    // Legend
-    this.add.rectangle(1140, 620, 200, 80, 0x16213e).setStrokeStyle(1, 0x3b82f6);
-    this.add.text(1140, 595, '🪜 Ladder (go up!)', { fontSize: '16px', color: '#4ade80' }).setOrigin(0.5);
-    this.add.text(1140, 625, '🎢 Chute (slide down!)', { fontSize: '16px', color: '#f87171' }).setOrigin(0.5);
+    // Legend - show all chutes and ladders with destinations
+    const legendStartY = 420;
+    this.add.rectangle(1140, legendStartY + 100, 200, 220, 0x16213e).setStrokeStyle(1, 0x3b82f6);
+
+    // Ladders section
+    this.add.text(1140, legendStartY, '🪜 LADDERS', {
+      fontSize: '14px',
+      color: '#4ade80',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    ladders.forEach((l, i) => {
+      this.add.text(1140, legendStartY + 20 + i * 18, `${l.start} → ${l.end}`, {
+        fontSize: '13px',
+        color: '#4ade80'
+      }).setOrigin(0.5);
+    });
+
+    // Chutes section
+    const chutesStartY = legendStartY + 115;
+    this.add.text(1140, chutesStartY, '🎢 CHUTES', {
+      fontSize: '14px',
+      color: '#f87171',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    chutes.forEach((c, i) => {
+      this.add.text(1140, chutesStartY + 20 + i * 18, `${c.start} → ${c.end}`, {
+        fontSize: '13px',
+        color: '#f87171'
+      }).setOrigin(0.5);
+    });
   }
 
   private setupSocketListeners() {
