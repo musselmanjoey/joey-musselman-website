@@ -34,9 +34,8 @@ export function GameSelector({ games, selectedGame, onSelect, playerCount }: Gam
                 p-4 rounded-xl text-left transition-all border-2
                 ${isSelected
                   ? 'bg-red-50 border-accent'
-                  : 'bg-gray-50 border-[var(--border)] hover:border-accent/50'
+                  : 'bg-white border-[var(--border)] hover:border-accent hover:shadow-md'
                 }
-                ${!canPlay ? 'opacity-50' : ''}
               `}
             >
               <div className="flex justify-between items-start">
