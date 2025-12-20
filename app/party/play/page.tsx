@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useSocket } from '../components/SocketProvider';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
 export default function JoinPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { socket, isConnected } = useSocket();
 
-  const [roomCode, setRoomCode] = useState('');
+  const [roomCode, setRoomCode] = useState(searchParams.get('code') || '');
   const [playerName, setPlayerName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);

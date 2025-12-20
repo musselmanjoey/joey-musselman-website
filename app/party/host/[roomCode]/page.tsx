@@ -41,9 +41,9 @@ export default function HostLobbyPage() {
   const [error, setError] = useState<string | null>(null);
   const [joinUrl, setJoinUrl] = useState<string>('');
 
-  // Set join URL on client side
+  // Set join URL on client side (goes to join page with code pre-filled)
   useEffect(() => {
-    setJoinUrl(`${window.location.origin}/party/play/${roomCode}`);
+    setJoinUrl(`${window.location.origin}/party/play?code=${roomCode}`);
   }, [roomCode]);
 
   useEffect(() => {
