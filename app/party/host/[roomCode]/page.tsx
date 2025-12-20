@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
 import { useSocket } from '../../components/SocketProvider';
 import { RoomCodeDisplay } from '../../components/RoomCodeDisplay';
 import { PlayerList } from '../../components/PlayerList';
@@ -38,6 +39,12 @@ export default function HostLobbyPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [joinUrl, setJoinUrl] = useState<string>('');
+
+  // Set join URL on client side
+  useEffect(() => {
+    setJoinUrl(`${window.location.origin}/party/play/${roomCode}`);
+  }, [roomCode]);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -119,9 +126,15 @@ export default function HostLobbyPage() {
       )}
 
       <div className="max-w-4xl mx-auto">
-        {/* Room Code */}
-        <div className="text-center mb-12">
+        {/* Room Code & QR */}
+        <div className="flex flex-col items-center mb-12 gap-6">
           <RoomCodeDisplay code={roomCode} />
+          {joinUrl && (
+            <div className="bg-white p-4 rounded-xl">
+              <QRCodeSVG value={joinUrl} size={160} />
+            </div>
+          )}
+          <p className="text-gray-400 text-sm">Scan to join on your phone</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
