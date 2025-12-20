@@ -27,3 +27,12 @@ export function disconnectSocket(): void {
     socket.disconnect();
   }
 }
+
+// Reset socket completely - call when leaving game
+export function resetSocket(): void {
+  if (socket) {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+}

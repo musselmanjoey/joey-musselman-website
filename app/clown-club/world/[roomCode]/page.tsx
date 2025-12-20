@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { getSocket, connectSocket } from '@/lib/clown-club/socket';
+import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 import { Socket } from 'socket.io-client';
 
 // Dynamic import for Phaser (client-only)
@@ -78,6 +78,8 @@ export default function WorldPage() {
       s.off('connect', handleConnected);
       s.off('cc:error');
       s.off('disconnect');
+      // Reset socket completely when leaving the world
+      resetSocket();
     };
   }, [roomCode, router]);
 

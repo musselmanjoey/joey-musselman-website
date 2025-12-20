@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { connectSocket } from '@/lib/clown-club/socket';
+import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 
 export default function HomePage() {
   const router = useRouter();
@@ -20,21 +20,29 @@ export default function HomePage() {
     setIsLoading(true);
     setError('');
 
+    // Reset any stale socket state before connecting
+    resetSocket();
     const socket = connectSocket();
 
-    socket.once('cc:room-created', ({ roomCode }: { roomCode: string }) => {
-      // Store player info in session storage
-      sessionStorage.setItem('playerName', playerName);
-      sessionStorage.setItem('playerId', socket.id || '');
-      router.push(`/clown-club/world/${roomCode}`);
-    });
+    const doCreate = () => {
+      socket.once('cc:room-created', ({ roomCode }: { roomCode: string }) => {
+        sessionStorage.setItem('playerName', playerName);
+        router.push(`/clown-club/world/${roomCode}`);
+      });
 
-    socket.once('cc:error', ({ message }: { message: string }) => {
-      setError(message);
-      setIsLoading(false);
-    });
+      socket.once('cc:error', ({ message }: { message: string }) => {
+        setError(message);
+        setIsLoading(false);
+      });
 
-    socket.emit('cc:create-room', { playerName });
+      socket.emit('cc:create-room', { playerName });
+    };
+
+    if (socket.connected) {
+      doCreate();
+    } else {
+      socket.once('connect', doCreate);
+    }
   };
 
   const handleJoin = async () => {
@@ -50,20 +58,29 @@ export default function HomePage() {
     setIsLoading(true);
     setError('');
 
+    // Reset any stale socket state before connecting
+    resetSocket();
     const socket = connectSocket();
 
-    socket.once('cc:room-joined', ({ roomCode: code }: { roomCode: string }) => {
-      sessionStorage.setItem('playerName', playerName);
-      sessionStorage.setItem('playerId', socket.id || '');
-      router.push(`/clown-club/world/${code}`);
-    });
+    const doJoin = () => {
+      socket.once('cc:room-joined', ({ roomCode: code }: { roomCode: string }) => {
+        sessionStorage.setItem('playerName', playerName);
+        router.push(`/clown-club/world/${code}`);
+      });
 
-    socket.once('cc:error', ({ message }: { message: string }) => {
-      setError(message);
-      setIsLoading(false);
-    });
+      socket.once('cc:error', ({ message }: { message: string }) => {
+        setError(message);
+        setIsLoading(false);
+      });
 
-    socket.emit('cc:join-room', { roomCode: roomCode.toUpperCase(), playerName });
+      socket.emit('cc:join-room', { roomCode: roomCode.toUpperCase(), playerName });
+    };
+
+    if (socket.connected) {
+      doJoin();
+    } else {
+      socket.once('connect', doJoin);
+    }
   };
 
   return (
