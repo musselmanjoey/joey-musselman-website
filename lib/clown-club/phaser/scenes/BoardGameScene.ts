@@ -45,14 +45,16 @@ export class BoardGameScene extends Phaser.Scene {
 
     console.log('[BoardGame] Create called, isHost:', this.isHost, 'socket:', !!this.socket, 'playerId:', this.playerId);
 
-    // Create background
-    this.add.rectangle(400, 300, 800, 600, BOARD_COLORS.background);
-
     if (this.isHost) {
-      // HOST VIEW: Full board display for TV/laptop
+      // HOST VIEW: Full board display for TV/laptop (keep FIT mode)
+      this.add.rectangle(400, 300, 800, 600, BOARD_COLORS.background);
       this.createHostView();
     } else {
-      // PLAYER VIEW: Mobile-friendly controller
+      // PLAYER VIEW: Switch to full screen mode for mobile
+      this.scale.scaleMode = Phaser.Scale.RESIZE;
+      this.scale.refresh();
+
+      // Create player view with dynamic sizing
       this.createPlayerView();
     }
 
@@ -80,61 +82,82 @@ export class BoardGameScene extends Phaser.Scene {
   }
 
   private createPlayerView() {
-    // Mobile-friendly player controller (800x600 canvas scaled with FIT mode)
+    // Mobile-friendly player controller with full screen support
     const playerName = this.registry.get('playerName') || 'Player';
+    const { width, height } = this.scale.gameSize;
+    const centerX = width / 2;
 
     // Full-screen background
-    this.add.rectangle(400, 300, 800, 600, BOARD_COLORS.background);
+    const bg = this.add.rectangle(centerX, height / 2, width, height, BOARD_COLORS.background);
 
     // Large title
-    this.add.text(400, 50, '🎲 Board Rush', {
-      fontSize: '36px',
+    this.add.text(centerX, height * 0.08, '🎲 Board Rush', {
+      fontSize: '32px',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // Player name
-    this.add.text(400, 100, playerName, {
-      fontSize: '24px',
+    this.add.text(centerX, height * 0.14, playerName, {
+      fontSize: '22px',
       color: '#60a5fa',
     }).setOrigin(0.5);
 
     // Status text - large and centered
-    this.statusText = this.add.text(400, 170, 'Waiting for game...', {
-      fontSize: '22px',
+    this.statusText = this.add.text(centerX, height * 0.22, 'Waiting for game...', {
+      fontSize: '20px',
       color: '#ffffff',
       align: 'center',
-      wordWrap: { width: 700 },
+      wordWrap: { width: width * 0.9 },
     }).setOrigin(0.5);
 
     // My position display
-    this.myPositionText = this.add.text(400, 230, 'Position: 1 / 50', {
-      fontSize: '28px',
+    this.myPositionText = this.add.text(centerX, height * 0.30, 'Position: 1 / 50', {
+      fontSize: '26px',
       color: '#4ade80',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // Roll result display (hidden initially)
-    this.rollResultText = this.add.text(400, 300, '', {
-      fontSize: '64px',
+    this.rollResultText = this.add.text(centerX, height * 0.40, '', {
+      fontSize: '56px',
     }).setOrigin(0.5);
 
     // Big roll button for mobile - centered and large
-    this.rollButton = this.createMobileButton(400, 400, 'ROLL DICE 🎲', () => {
+    const buttonWidth = Math.min(width * 0.85, 320);
+    this.rollButton = this.createMobileButton(centerX, height * 0.55, 'ROLL DICE 🎲', () => {
       this.socket.emit('bg:roll-dice');
       this.rollButton.setVisible(false);
       this.statusText.setText('Rolling...');
-    }, 0x3b82f6, 300, 80);
+    }, 0x3b82f6, buttonWidth, 70);
     this.rollButton.setVisible(false);
 
-    // Trivia container (hidden initially)
-    this.triviaContainer = this.add.container(400, 380);
+    // Trivia container (hidden initially) - position will be set in showPlayerTrivia
+    this.triviaContainer = this.add.container(centerX, height * 0.50);
     this.triviaContainer.setVisible(false);
 
-    // Leave button - smaller, at bottom
-    this.createMobileButton(400, 550, 'Leave Game', () => {
+    // Leave button - at bottom
+    this.createMobileButton(centerX, height * 0.92, 'Leave Game', () => {
       this.socket.emit('game:leave');
-    }, 0xef4444, 160, 50);
+    }, 0xef4444, 150, 45);
+
+    // Handle resize events
+    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
+      const w = gameSize.width;
+      const h = gameSize.height;
+      const cx = w / 2;
+
+      bg.setPosition(cx, h / 2);
+      bg.setSize(w, h);
+    });
+  }
+
+  shutdown() {
+    // Restore FIT mode when leaving the game scene
+    if (!this.isHost) {
+      this.scale.scaleMode = Phaser.Scale.FIT;
+      this.scale.refresh();
+    }
   }
 
   private createMobileButton(
@@ -647,27 +670,32 @@ export class BoardGameScene extends Phaser.Scene {
     this.triviaContainer.setVisible(true);
     this.rollButton.setVisible(false);
 
-    // Move trivia container higher on screen for mobile
-    this.triviaContainer.setPosition(400, 320);
+    const { width, height } = this.scale.gameSize;
+    const centerX = width / 2;
+
+    // Move trivia container to center of screen
+    this.triviaContainer.setPosition(centerX, height * 0.45);
 
     this.statusText.setText('TRIVIA! Look at the TV!');
 
-    // Don't show question on phone - it's on the TV
-    // Just show big answer buttons
+    // Calculate button dimensions based on screen
+    const buttonWidth = Math.min(width * 0.9, 360);
+    const buttonHeight = 60;
+    const buttonSpacing = 75;
 
-    // Big touch-friendly answer buttons with more space
+    // Big touch-friendly answer buttons
     data.options.forEach((opt, i) => {
-      const y = -100 + i * 80;
+      const y = -80 + i * buttonSpacing;
 
-      const optBg = this.add.rectangle(0, y, 360, 65, 0x3b82f6);
+      const optBg = this.add.rectangle(0, y, buttonWidth, buttonHeight, 0x3b82f6);
       optBg.setStrokeStyle(4, 0x60a5fa);
       optBg.setInteractive({ useHandCursor: true });
 
       const optText = this.add.text(0, y, `${String.fromCharCode(65 + i)}. ${opt.text}`, {
-        fontSize: '20px',
+        fontSize: '18px',
         color: '#ffffff',
         fontStyle: 'bold',
-        wordWrap: { width: 340 },
+        wordWrap: { width: buttonWidth - 20 },
       }).setOrigin(0.5);
 
       optBg.on('pointerover', () => optBg.setAlpha(0.8));
