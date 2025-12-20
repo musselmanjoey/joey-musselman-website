@@ -275,10 +275,16 @@ export class HostWorldScene extends Phaser.Scene {
       this.movePlayer(data.playerId, data.x, data.y);
     });
 
-    // Player joined
-    this.socket.on('cc:player-joined', (data: PlayerData) => {
-      console.log('[HostWorld] Player joined:', data.name);
-      this.addPlayer(data);
+    // Player joined - server sends playerId/playerName, we need to map to id/name
+    this.socket.on('cc:player-joined', (data: { playerId: string; playerName: string; x: number; y: number; character: string }) => {
+      console.log('[HostWorld] Player joined:', data.playerName);
+      this.addPlayer({
+        id: data.playerId,
+        name: data.playerName,
+        x: data.x,
+        y: data.y,
+        character: data.character,
+      });
     });
 
     // Player left
