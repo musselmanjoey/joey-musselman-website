@@ -468,24 +468,36 @@ export class HostBoardGameScene extends Phaser.Scene {
   private updateStandings(standings: BoardPosition[]) {
     this.standingsContainer.removeAll(true);
 
-    standings.forEach((player, i) => {
-      const y = i * 50;
+    // Only show top 6 players to prevent running off screen
+    const displayStandings = standings.slice(0, 6);
+
+    displayStandings.forEach((player, i) => {
+      const y = i * 45;
       const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
 
       const dot = this.add.circle(-80, y, 12, parseInt((player.color || '#ffffff').replace('#', '0x')));
-      const rank = this.add.text(-55, y, medal, { fontSize: '20px' }).setOrigin(0, 0.5);
+      const rank = this.add.text(-55, y, medal, { fontSize: '18px' }).setOrigin(0, 0.5);
       const name = this.add.text(-25, y, player.playerName, {
-        fontSize: '18px',
+        fontSize: '16px',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0, 0.5);
       const pos = this.add.text(80, y, `${player.position}`, {
-        fontSize: '18px',
+        fontSize: '16px',
         color: '#60a5fa',
       }).setOrigin(0.5);
 
       this.standingsContainer.add([dot, rank, name, pos]);
     });
+
+    // Show indicator if there are more players
+    if (standings.length > 6) {
+      const moreText = this.add.text(0, 6 * 45, `+${standings.length - 6} more`, {
+        fontSize: '14px',
+        color: '#888888',
+      }).setOrigin(0.5, 0);
+      this.standingsContainer.add(moreText);
+    }
   }
 
   private showWinner(winnerName: string) {
