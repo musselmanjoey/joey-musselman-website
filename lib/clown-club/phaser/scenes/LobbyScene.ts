@@ -426,11 +426,25 @@ export class LobbyScene extends Phaser.Scene {
 
       gameEvents.emit('game-started', gameData);
 
-      // Switch to appropriate game scene - use launch() to keep LobbyScene alive but paused
+      // Switch to appropriate game scene
       // Players always see mobile controller (isHost: false) - the TV spectator shows the board
       if (gameData.gameType === 'board-game') {
-        this.scene.pause();
-        this.scene.launch('BoardGameScene', { isHost: false });
+        try {
+          // Stop the scene if it's already running (from a previous game)
+          if (this.scene.isActive('BoardGameScene') || this.scene.isPaused('BoardGameScene')) {
+            console.log('[Clown Club] Stopping existing BoardGameScene');
+            this.scene.stop('BoardGameScene');
+          }
+
+          // Pause lobby and launch game scene
+          this.scene.pause();
+          console.log('[Clown Club] Launching BoardGameScene with isHost: false');
+          this.scene.launch('BoardGameScene', { isHost: false });
+        } catch (error) {
+          console.error('[Clown Club] Error launching BoardGameScene:', error);
+          // Try to recover by resuming this scene
+          this.scene.resume();
+        }
       }
       // Add more game types here as needed
     });
