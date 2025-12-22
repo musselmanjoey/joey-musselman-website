@@ -17,10 +17,10 @@ const PhaserWrapper = dynamic(
 
 function LoadingScreen() {
   return (
-    <div className="w-full h-screen flex items-center justify-center bg-sky-400">
+    <div className="w-full h-screen flex items-center justify-center bg-white">
       <div className="text-center">
         <div className="text-6xl mb-4">🤡</div>
-        <p className="text-white text-xl">Loading world...</p>
+        <p className="text-[var(--foreground)] text-xl">Loading world...</p>
       </div>
     </div>
   );
@@ -153,14 +153,14 @@ export default function WorldPage() {
 
   if (error) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-sky-400">
-        <div className="bg-white rounded-xl p-8 text-center max-w-md">
+      <div className="w-full h-screen flex items-center justify-center bg-white">
+        <div className="bg-white rounded-xl p-8 text-center max-w-md border border-[var(--border)]">
           <div className="text-4xl mb-4">😢</div>
           <h2 className="text-xl font-bold mb-2">Oops!</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-[var(--muted)] mb-4">{error}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="px-6 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)]"
           >
             Go Home
           </button>
@@ -219,7 +219,7 @@ export default function WorldPage() {
               onChange={(e) => setChatMessage(e.target.value)}
               placeholder="Type a message..."
               maxLength={100}
-              className="px-4 py-2 rounded-full bg-white/95 shadow-lg w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="px-4 py-2 rounded-full bg-white/95 shadow-lg w-64 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               autoFocus
               onBlur={() => {
                 if (!chatMessage.trim()) {
@@ -229,7 +229,7 @@ export default function WorldPage() {
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition"
+              className="px-4 py-2 bg-[var(--accent)] text-white rounded-full shadow-lg hover:bg-[var(--accent-hover)] transition"
             >
               Send
             </button>

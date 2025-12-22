@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
 import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 import { Socket } from 'socket.io-client';
@@ -28,6 +29,7 @@ export default function HostPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [roomCode] = useState('LOBBY');
   const [gameActive, setGameActive] = useState(false);
+  const [gameType, setGameType] = useState<string | undefined>(undefined);
   const [playerCount, setPlayerCount] = useState(0);
 
   useEffect(() => {
@@ -61,14 +63,16 @@ export default function HostPage() {
       setPlayerCount(prev => Math.max(0, prev - 1));
     });
 
-    s.on('game:started', (data: unknown) => {
+    s.on('game:started', (data: { gameType?: string }) => {
       console.log('[Host] Game started:', data);
       setGameActive(true);
+      setGameType(data?.gameType);
     });
 
     s.on('game:ended', (data: unknown) => {
       console.log('[Host] Game ended:', data);
       setGameActive(false);
+      setGameType(undefined);
     });
 
     // Debug: log all events
@@ -102,27 +106,31 @@ export default function HostPage() {
       {/* Connection status */}
       <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
         <span className="text-white text-sm">{playerCount} players</span>
-        <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+        <div className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
       </div>
 
-      {/* QR Code and Room info */}
+      {/* Logo and QR Code */}
       <div className="fixed top-4 left-4 z-20 flex items-start gap-4">
-        <div className="bg-white p-3 rounded-lg shadow-lg">
+        <div className="bg-white p-4 rounded-xl shadow-lg">
+          <Image
+            src="/images/clowncode-logo.png"
+            alt="Clown Code"
+            width={140}
+            height={48}
+            className="mb-3"
+          />
           <QRCodeSVG
             value="https://joeymusselman.com/clown-club"
             size={120}
             level="M"
+            fgColor="#dc2626"
           />
-          <p className="text-sm text-center mt-2 text-gray-600 font-medium">Scan to join</p>
-        </div>
-        <div className="bg-black/50 text-white px-4 py-2 rounded-lg">
-          <span className="text-sm opacity-70">Room:</span>{' '}
-          <span className="font-mono font-bold text-2xl">{roomCode}</span>
+          <p className="text-xs text-center mt-2 text-[var(--muted)] font-medium">Scan to join</p>
         </div>
       </div>
 
       {/* Phaser game display */}
-      <HostPhaserWrapper socket={socket} gameActive={gameActive} />
+      <HostPhaserWrapper socket={socket} gameActive={gameActive} gameType={gameType} />
     </div>
   );
 }

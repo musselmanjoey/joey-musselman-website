@@ -57,7 +57,7 @@ export default function CrownCardPage() {
       {/* Print button - hidden when printing */}
       <button
         onClick={() => window.print()}
-        className="fixed bottom-8 right-8 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg print:hidden"
+        className="fixed bottom-8 right-8 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-6 py-3 rounded-lg font-semibold shadow-lg print:hidden"
       >
         Print Card
       </button>

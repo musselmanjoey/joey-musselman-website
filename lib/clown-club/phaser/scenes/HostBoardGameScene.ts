@@ -3,13 +3,15 @@ import { Socket } from 'socket.io-client';
 import { BoardPosition, BoardMovement } from '../../types';
 
 const BOARD_COLORS = {
-  background: 0x1a1a2e,
-  boardBg: 0x16213e,
-  space: 0x0f3460,
-  spaceAlt: 0x1a1a2e,
+  background: 0xffffff,
+  boardBg: 0xf3f4f6,
+  space: 0xe5e7eb,
+  spaceAlt: 0xf3f4f6,
   ladder: 0x4ade80,
   chute: 0xf87171,
-  text: 0xffffff,
+  text: 0x171717,
+  accent: 0xdc2626,
+  border: 0xe5e7eb,
 };
 
 interface TriviaOption {
@@ -44,14 +46,14 @@ export class HostBoardGameScene extends Phaser.Scene {
     // Title
     this.add.text(640, 40, '🎲 BOARD RUSH 🎲', {
       fontSize: '48px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // Round indicator
     this.roundText = this.add.text(640, 90, 'Round 1', {
       fontSize: '28px',
-      color: '#60a5fa',
+      color: '#dc2626',
     }).setOrigin(0.5);
 
     // Create the board (larger for TV)
@@ -60,11 +62,11 @@ export class HostBoardGameScene extends Phaser.Scene {
     // Status text
     this.statusText = this.add.text(640, 680, 'Waiting for players to roll...', {
       fontSize: '28px',
-      color: '#ffffff',
+      color: '#171717',
     }).setOrigin(0.5);
 
     // Standings panel on the right (shorter to make room for legend)
-    this.add.rectangle(1140, 280, 240, 280, 0x16213e).setStrokeStyle(2, 0x3b82f6);
+    this.add.rectangle(1140, 280, 240, 280, BOARD_COLORS.boardBg).setStrokeStyle(2, BOARD_COLORS.border);
     this.add.text(1140, 155, 'STANDINGS', {
       fontSize: '24px',
       color: '#fbbf24',
@@ -73,7 +75,7 @@ export class HostBoardGameScene extends Phaser.Scene {
     this.standingsContainer = this.add.container(1140, 190);
 
     // Legend panel - chutes and ladders
-    this.add.rectangle(1140, 540, 240, 200, 0x16213e).setStrokeStyle(2, 0x3b82f6);
+    this.add.rectangle(1140, 540, 240, 200, BOARD_COLORS.boardBg).setStrokeStyle(2, BOARD_COLORS.border);
 
     // Ladders
     this.add.text(1070, 455, '🪜 LADDERS', { fontSize: '14px', color: '#4ade80', fontStyle: 'bold' });
@@ -117,8 +119,8 @@ export class HostBoardGameScene extends Phaser.Scene {
       startY - boardHeight / 2 + spaceSize / 2,
       boardWidth + 40,
       boardHeight + 40,
-      0x16213e
-    ).setStrokeStyle(3, 0x3b82f6);
+      BOARD_COLORS.boardBg
+    ).setStrokeStyle(3, BOARD_COLORS.border);
 
     // Create 50 spaces in a snake pattern
     for (let i = 1; i <= 50; i++) {
@@ -131,13 +133,13 @@ export class HostBoardGameScene extends Phaser.Scene {
 
       const color = i % 2 === 0 ? BOARD_COLORS.space : BOARD_COLORS.spaceAlt;
       const space = this.add.rectangle(x, y, spaceSize, spaceSize, color);
-      space.setStrokeStyle(2, 0x333355);
+      space.setStrokeStyle(2, BOARD_COLORS.border);
       this.boardSpaces.push(space);
 
       // Space number
       this.add.text(x, y, i.toString(), {
         fontSize: '18px',
-        color: '#666688',
+        color: '#6b7280',
         fontStyle: 'bold',
       }).setOrigin(0.5);
     }
@@ -302,7 +304,7 @@ export class HostBoardGameScene extends Phaser.Scene {
     if (!token) {
       token = this.add.container(0, 0);
       const circle = this.add.circle(0, 0, 22, parseInt(color.replace('#', '0x')));
-      circle.setStrokeStyle(3, 0xffffff);
+      circle.setStrokeStyle(3, 0x171717);
       const initial = this.add.text(0, 0, name.charAt(0).toUpperCase(), {
         fontSize: '18px',
         color: '#ffffff',
@@ -327,7 +329,7 @@ export class HostBoardGameScene extends Phaser.Scene {
   private showRollPopup(playerName: string, roll: number) {
     const popup = this.add.text(640, 300, `${playerName}: 🎲 ${roll}`, {
       fontSize: '48px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5).setAlpha(0);
 
@@ -409,14 +411,14 @@ export class HostBoardGameScene extends Phaser.Scene {
     this.statusText.setText('TRIVIA! Players answering on phones...');
 
     // Compact question background at top
-    const bg = this.add.rectangle(0, 0, 900, 120, 0x16213e);
+    const bg = this.add.rectangle(0, 0, 900, 120, BOARD_COLORS.boardBg);
     bg.setStrokeStyle(3, 0xfbbf24);
     this.triviaContainer.add(bg);
 
     // Question text - larger and readable
     const questionText = this.add.text(0, -20, question, {
       fontSize: '24px',
-      color: '#ffffff',
+      color: '#171717',
       wordWrap: { width: 850 },
       align: 'center',
     }).setOrigin(0.5);
@@ -452,7 +454,7 @@ export class HostBoardGameScene extends Phaser.Scene {
       fontSize: '32px',
       color: '#4ade80',
       fontStyle: 'bold',
-      backgroundColor: '#1a1a2e',
+      backgroundColor: '#f3f4f6',
       padding: { x: 20, y: 10 },
     }).setOrigin(0.5);
 
@@ -479,12 +481,12 @@ export class HostBoardGameScene extends Phaser.Scene {
       const rank = this.add.text(-55, y, medal, { fontSize: '18px' }).setOrigin(0, 0.5);
       const name = this.add.text(-25, y, player.playerName, {
         fontSize: '16px',
-        color: '#ffffff',
+        color: '#171717',
         fontStyle: 'bold',
       }).setOrigin(0, 0.5);
       const pos = this.add.text(80, y, `${player.position}`, {
         fontSize: '16px',
-        color: '#60a5fa',
+        color: '#dc2626',
       }).setOrigin(0.5);
 
       this.standingsContainer.add([dot, rank, name, pos]);
@@ -494,7 +496,7 @@ export class HostBoardGameScene extends Phaser.Scene {
     if (standings.length > 6) {
       const moreText = this.add.text(0, 6 * 45, `+${standings.length - 6} more`, {
         fontSize: '14px',
-        color: '#888888',
+        color: '#6b7280',
       }).setOrigin(0.5, 0);
       this.standingsContainer.add(moreText);
     }

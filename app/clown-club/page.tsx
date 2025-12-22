@@ -2,13 +2,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 const EMOJI_OPTIONS = [
   '🤡', '🐸', '🐱', '🐶', '🦊', '🐼', '🐨', '🐯',
   '🦁', '🐮', '🐷', '🐵', '🐰', '🐻', '🐔', '🦄',
 ];
 
-const VIP_SECRET = 'CLOWNKING'; // Secret key for crown access
+const VIP_SECRET = 'CLOWNKING';
 
 function HomePageContent() {
   const router = useRouter();
@@ -19,7 +20,6 @@ function HomePageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Check for VIP param on mount
   useEffect(() => {
     const vipParam = searchParams.get('vip');
     if (vipParam === VIP_SECRET) {
@@ -34,49 +34,55 @@ function HomePageContent() {
     }
 
     setIsLoading(true);
-    // Limit name to 8 chars and store
     const trimmedName = playerName.trim().slice(0, 8);
     sessionStorage.setItem('playerName', trimmedName);
     sessionStorage.setItem('playerEmoji', selectedEmoji);
     sessionStorage.setItem('isVIP', isVIP ? 'true' : 'false');
 
-    // Everyone joins the same persistent "LOBBY" world
     router.push('/clown-club/world/LOBBY');
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-sky-400 to-sky-200">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
-        {/* Header with selected emoji */}
-        <div className="text-center mb-4">
-          <span className="text-6xl">{selectedEmoji}</span>
-          {isVIP && <span className="text-4xl ml-1">👑</span>}
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-white">
+      {/* Logo */}
+      <div className="mb-8">
+        <Image
+          src="/images/clowncode-logo.png"
+          alt="Clown Code"
+          width={280}
+          height={96}
+          priority
+        />
+      </div>
+
+      <div className="w-full max-w-sm">
+        {/* Selected character display */}
+        <div className="text-center mb-6">
+          <span className="text-7xl">{selectedEmoji}</span>
+          {isVIP && <span className="text-5xl ml-2">👑</span>}
         </div>
-        <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-          Clown Club
-        </h2>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-50 border border-[var(--accent)] text-[var(--accent)] rounded-lg text-sm">
             {error}
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* Emoji Picker */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
               Choose Your Character
             </label>
-            <div className="grid grid-cols-8 gap-1">
+            <div className="grid grid-cols-8 gap-1 p-2 border border-[var(--border)] rounded-xl">
               {EMOJI_OPTIONS.map((emoji) => (
                 <button
                   key={emoji}
                   onClick={() => setSelectedEmoji(emoji)}
-                  className={`text-2xl p-1 rounded-lg transition hover:bg-gray-100 ${
+                  className={`text-2xl p-1.5 rounded-lg transition ${
                     selectedEmoji === emoji
-                      ? 'bg-blue-100 ring-2 ring-blue-500'
-                      : ''
+                      ? 'bg-red-50 ring-2 ring-[var(--accent)]'
+                      : 'hover:bg-gray-50'
                   }`}
                 >
                   {emoji}
@@ -87,16 +93,16 @@ function HomePageContent() {
 
           {/* Name Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Your Name (max 8 chars)
+            <label className="block text-sm font-medium text-[var(--foreground)] mb-1">
+              Your Name
             </label>
             <input
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value.slice(0, 8))}
               onKeyDown={(e) => e.key === 'Enter' && handleEnter()}
-              placeholder="Enter your name"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Max 8 characters"
+              className="w-full px-4 py-3 border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent outline-none transition"
               maxLength={8}
               disabled={isLoading}
               autoFocus
@@ -106,20 +112,16 @@ function HomePageContent() {
           <button
             onClick={handleEnter}
             disabled={isLoading}
-            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:opacity-50"
+            className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-semibold rounded-xl transition disabled:opacity-50"
           >
             {isLoading ? 'Entering...' : 'Enter World'}
           </button>
         </div>
 
-        <p className="mt-4 text-center text-gray-500 text-sm">
-          Join everyone in the same world!
+        <p className="mt-6 text-center text-[var(--muted)] text-sm">
+          A multiplayer virtual hangout
         </p>
       </div>
-
-      <p className="mt-6 text-white/80 text-sm">
-        A Club Penguin-style virtual world
-      </p>
     </main>
   );
 }
@@ -127,8 +129,8 @@ function HomePageContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-400 to-sky-200">
-        <div className="text-white text-xl">Loading...</div>
+      <main className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-[var(--muted)] text-xl">Loading...</div>
       </main>
     }>
       <HomePageContent />

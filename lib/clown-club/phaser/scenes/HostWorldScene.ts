@@ -147,9 +147,9 @@ export class HostWorldScene extends Phaser.Scene {
     // TV Display label
     this.add.text(640, 30, '📺 CLOWN CLUB TV', {
       fontSize: '28px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
-      backgroundColor: '#00000050',
+      backgroundColor: '#ffffff90',
       padding: { x: 20, y: 8 },
     }).setOrigin(0.5).setDepth(1000);
   }
@@ -306,14 +306,16 @@ export class HostWorldScene extends Phaser.Scene {
     });
 
     // Game started - switch to game scene
-    this.socket.on('game:started', () => {
-      console.log('[HostWorld] Game started, switching to board game scene');
+    this.socket.on('game:started', (data: { gameType?: string }) => {
+      const gameType = data?.gameType || 'board-game';
+      const sceneName = gameType === 'caption-contest' ? 'HostCaptionContestScene' : 'HostBoardGameScene';
+      console.log("[HostWorld] Game started, type:", gameType);
       this.hideArcadeOverlay();
       if (this.queueUI) {
         this.queueUI.destroy();
         this.queueUI = undefined;
       }
-      this.scene.start('HostBoardGameScene');
+      this.scene.start(sceneName);
     });
 
     // Arcade activated - show arcade video/content
@@ -354,7 +356,7 @@ export class HostWorldScene extends Phaser.Scene {
     // Title
     const title = this.add.text(0, -250, '🕹️ GAME LOBBY 🕹️', {
       fontSize: '56px',
-      color: '#00ff00',
+      color: '#dc2626',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     this.queueUI.add(title);
@@ -371,7 +373,7 @@ export class HostWorldScene extends Phaser.Scene {
       const y = -100 + i * 50;
       const playerText = this.add.text(0, y, `🤡 ${player.name}`, {
         fontSize: '32px',
-        color: '#60a5fa',
+        color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5);
       this.queueUI?.add(playerText);
@@ -448,18 +450,18 @@ export class HostWorldScene extends Phaser.Scene {
     this.arcadeOverlay.add(bg);
 
     // Arcade frame
-    const frame = this.add.rectangle(0, 0, 900, 550, 0x2a2a2a);
-    frame.setStrokeStyle(8, 0x00ff00);
+    const frame = this.add.rectangle(0, 0, 900, 550, 0xf3f4f6);
+    frame.setStrokeStyle(8, 0xdc2626);
     this.arcadeOverlay.add(frame);
 
     // Arcade screen area
-    const screen = this.add.rectangle(0, -20, 840, 420, 0x111111);
+    const screen = this.add.rectangle(0, -20, 840, 420, 0xffffff);
     this.arcadeOverlay.add(screen);
 
     // Arcade title
     const title = this.add.text(0, -200, '🕹️ ARCADE 🕹️', {
       fontSize: '48px',
-      color: '#00ff00',
+      color: '#dc2626',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     this.arcadeOverlay.add(title);
@@ -467,7 +469,7 @@ export class HostWorldScene extends Phaser.Scene {
     // Player selection text
     const playerText = this.add.text(0, -120, `${playerName} is choosing a game...`, {
       fontSize: '28px',
-      color: '#ffffff',
+      color: '#171717',
     }).setOrigin(0.5);
     this.arcadeOverlay.add(playerText);
 
@@ -500,8 +502,8 @@ export class HostWorldScene extends Phaser.Scene {
     games.forEach((game, i) => {
       const gameOption = this.add.text(-200 + i * 200, 160, game, {
         fontSize: '24px',
-        color: '#ffff00',
-        backgroundColor: '#333333',
+        color: '#171717',
+        backgroundColor: '#f3f4f6',
         padding: { x: 15, y: 10 },
       }).setOrigin(0.5);
       this.arcadeOverlay?.add(gameOption);
@@ -510,7 +512,7 @@ export class HostWorldScene extends Phaser.Scene {
     // Instructions
     const instructions = this.add.text(0, 240, 'Waiting for game selection...', {
       fontSize: '20px',
-      color: '#888888',
+      color: '#6b7280',
     }).setOrigin(0.5);
     this.arcadeOverlay.add(instructions);
 

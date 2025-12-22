@@ -23,25 +23,25 @@ export class HostLobbyScene extends Phaser.Scene {
     console.log('[HostLobby] Creating scene, socket:', !!this.socket);
 
     // Background
-    this.add.rectangle(640, 360, 1280, 720, 0x1a1a2e);
+    this.add.rectangle(640, 360, 1280, 720, 0xffffff);
 
     // Title
     this.add.text(640, 80, '🎪 CLOWN CLUB 🎪', {
       fontSize: '64px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // Subtitle
     this.add.text(640, 150, 'Waiting for players to join...', {
       fontSize: '28px',
-      color: '#60a5fa',
+      color: '#dc2626',
     }).setOrigin(0.5);
 
     // Join instructions
     this.add.text(640, 220, 'Join at: clown.club/LOBBY', {
       fontSize: '36px',
-      color: '#fbbf24',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -51,7 +51,7 @@ export class HostLobbyScene extends Phaser.Scene {
     // Waiting animation text
     this.waitingText = this.add.text(640, 650, 'Waiting for a player to start a game...', {
       fontSize: '24px',
-      color: '#9ca3af',
+      color: '#6b7280',
     }).setOrigin(0.5);
 
     // Animate waiting text
@@ -119,8 +119,8 @@ export class HostLobbyScene extends Phaser.Scene {
       const y = row * cellHeight;
 
       // Player card
-      const card = this.add.rectangle(x, y, 250, 60, 0x3b82f6);
-      card.setStrokeStyle(2, 0x60a5fa);
+      const card = this.add.rectangle(x, y, 250, 60, 0xf3f4f6);
+      card.setStrokeStyle(2, 0xdc2626);
 
       // Player emoji avatar
       const avatar = this.add.text(x - 90, y, '🤡', {
@@ -130,7 +130,7 @@ export class HostLobbyScene extends Phaser.Scene {
       // Player name
       const name = this.add.text(x + 10, y, player.name, {
         fontSize: '22px',
-        color: '#ffffff',
+        color: '#171717',
         fontStyle: 'bold',
       }).setOrigin(0.5);
 

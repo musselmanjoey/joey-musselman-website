@@ -5,10 +5,12 @@ import * as Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
 import { HostWorldScene } from './scenes/HostWorldScene';
 import { HostBoardGameScene } from './scenes/HostBoardGameScene';
+import { HostCaptionContestScene } from './scenes/HostCaptionContestScene';
 
 interface HostPhaserWrapperProps {
   socket: Socket;
   gameActive: boolean;
+  gameType?: string;
 }
 
 // Boot scene that waits for socket before starting world
@@ -19,10 +21,10 @@ class HostBootScene extends Phaser.Scene {
 
   create() {
     // Show loading
-    this.add.rectangle(640, 360, 1280, 720, 0x87CEEB);
+    this.add.rectangle(640, 360, 1280, 720, 0xffffff);
     this.add.text(640, 360, '📺 Loading TV Display...', {
       fontSize: '32px',
-      color: '#ffffff',
+      color: '#171717',
     }).setOrigin(0.5);
 
     // Wait for socket to be in registry
@@ -45,16 +47,16 @@ function createHostGameConfig(parent: string): Phaser.Types.Core.GameConfig {
     parent,
     width: 1280,
     height: 720,
-    backgroundColor: '#87CEEB',
+    backgroundColor: '#ffffff',
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [HostBootScene, HostWorldScene, HostBoardGameScene],
+    scene: [HostBootScene, HostWorldScene, HostBoardGameScene, HostCaptionContestScene],
   };
 }
 
-export function HostPhaserWrapper({ socket, gameActive }: HostPhaserWrapperProps) {
+export function HostPhaserWrapper({ socket, gameActive, gameType }: HostPhaserWrapperProps) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,14 +86,22 @@ export function HostPhaserWrapper({ socket, gameActive }: HostPhaserWrapperProps
     const game = gameRef.current;
 
     if (gameActive) {
-      console.log('[HostWrapper] Switching to board game scene');
-      game.scene.start('HostBoardGameScene');
+      // Switch to appropriate game scene based on type
+      const sceneName = gameType === 'caption-contest' 
+        ? 'HostCaptionContestScene' 
+        : 'HostBoardGameScene';
+      console.log(`[HostWrapper] Switching to ${sceneName}`);
+      game.scene.start(sceneName);
     } else {
+      // Return to world
       if (game.scene.isActive('HostBoardGameScene')) {
         game.scene.start('HostWorldScene');
       }
+      if (game.scene.isActive('HostCaptionContestScene')) {
+        game.scene.start('HostWorldScene');
+      }
     }
-  }, [gameActive]);
+  }, [gameActive, gameType]);
 
   return (
     <div

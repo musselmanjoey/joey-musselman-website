@@ -38,6 +38,7 @@ export class LobbyScene extends Phaser.Scene {
   private boundSocketListeners: Map<string, (...args: unknown[]) => void> = new Map();
   private waitingOverlay?: Phaser.GameObjects.Container;
   private waitingText?: Phaser.GameObjects.Text;
+  private gameSelectOverlay?: Phaser.GameObjects.Container;
 
   constructor() {
     super('LobbyScene');
@@ -390,8 +391,8 @@ export class LobbyScene extends Phaser.Scene {
     addListener('cc:interaction-result', (data: unknown) => {
       const result = data as InteractionResult;
       if (result.success && result.action === 'launch-game') {
-        // Join the game queue (host will start when ready)
-        this.socket.emit('game:join-queue', { gameType: 'board-game' });
+        // Show game selector overlay
+        this.showGameSelector();
       }
     });
 
@@ -445,8 +446,20 @@ export class LobbyScene extends Phaser.Scene {
           // Try to recover by resuming this scene
           this.scene.resume();
         }
+      } else if (gameData.gameType === 'caption-contest') {
+        try {
+          if (this.scene.isActive('CaptionContestScene') || this.scene.isPaused('CaptionContestScene')) {
+            console.log('[Clown Club] Stopping existing CaptionContestScene');
+            this.scene.stop('CaptionContestScene');
+          }
+          this.scene.pause();
+          console.log('[Clown Club] Launching CaptionContestScene');
+          this.scene.launch('CaptionContestScene');
+        } catch (error) {
+          console.error('[Clown Club] Error launching CaptionContestScene:', error);
+          this.scene.resume();
+        }
       }
-      // Add more game types here as needed
     });
 
     // Chat message
@@ -553,7 +566,7 @@ export class LobbyScene extends Phaser.Scene {
     // Title
     const title = this.add.text(0, -100, '🕹️ READY TO PLAY!', {
       fontSize: '36px',
-      color: '#00ff00',
+      color: '#22c55e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     this.waitingOverlay.add(title);
@@ -618,6 +631,96 @@ export class LobbyScene extends Phaser.Scene {
       this.waitingOverlay.destroy();
       this.waitingOverlay = undefined;
       this.waitingText = undefined;
+    }
+  }
+
+  private showGameSelector() {
+    if (this.gameSelectOverlay) return;
+
+    this.gameSelectOverlay = this.add.container(400, 300);
+    this.gameSelectOverlay.setDepth(1000);
+
+    // Dark background
+    const bg = this.add.rectangle(0, 0, 800, 600, 0x000000, 0.85);
+    bg.setInteractive(); // Block clicks through
+    this.gameSelectOverlay.add(bg);
+
+    // Title
+    const title = this.add.text(0, -120, '🕹️ SELECT A GAME', {
+      fontSize: '36px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.gameSelectOverlay.add(title);
+
+    // Board Rush button
+    const boardBg = this.add.rectangle(-100, 20, 150, 150, 0xf3f4f6);
+    boardBg.setStrokeStyle(3, 0xdc2626);
+    boardBg.setInteractive({ useHandCursor: true });
+
+    const boardEmoji = this.add.text(-100, 0, '🎮', {
+      fontSize: '64px',
+    }).setOrigin(0.5);
+
+    const boardLabel = this.add.text(-100, 60, 'Board Rush', {
+      fontSize: '16px',
+      color: '#171717',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.gameSelectOverlay.add([boardBg, boardEmoji, boardLabel]);
+
+    boardBg.on('pointerover', () => boardBg.setFillStyle(0xdc2626));
+    boardBg.on('pointerout', () => boardBg.setFillStyle(0xf3f4f6));
+    boardBg.on('pointerdown', () => {
+      this.hideGameSelector();
+      this.socket.emit('game:join-queue', { gameType: 'board-game' });
+    });
+
+    // Caption Contest button
+    const captionBg = this.add.rectangle(100, 20, 150, 150, 0xf3f4f6);
+    captionBg.setStrokeStyle(3, 0xdc2626);
+    captionBg.setInteractive({ useHandCursor: true });
+
+    const captionEmoji = this.add.text(100, 0, '📸', {
+      fontSize: '64px',
+    }).setOrigin(0.5);
+
+    const captionLabel = this.add.text(100, 60, 'Caption Contest', {
+      fontSize: '16px',
+      color: '#171717',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.gameSelectOverlay.add([captionBg, captionEmoji, captionLabel]);
+
+    captionBg.on('pointerover', () => captionBg.setFillStyle(0xdc2626));
+    captionBg.on('pointerout', () => captionBg.setFillStyle(0xf3f4f6));
+    captionBg.on('pointerdown', () => {
+      this.hideGameSelector();
+      this.socket.emit('game:join-queue', { gameType: 'caption-contest' });
+    });
+
+    // Cancel button
+    const cancelBg = this.add.rectangle(0, 150, 120, 40, 0x6b7280);
+    cancelBg.setInteractive({ useHandCursor: true });
+
+    const cancelText = this.add.text(0, 150, 'Cancel', {
+      fontSize: '18px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    this.gameSelectOverlay.add([cancelBg, cancelText]);
+
+    cancelBg.on('pointerover', () => cancelBg.setFillStyle(0x4b5563));
+    cancelBg.on('pointerout', () => cancelBg.setFillStyle(0x6b7280));
+    cancelBg.on('pointerdown', () => this.hideGameSelector());
+  }
+
+  private hideGameSelector() {
+    if (this.gameSelectOverlay) {
+      this.gameSelectOverlay.destroy();
+      this.gameSelectOverlay = undefined;
     }
   }
 }

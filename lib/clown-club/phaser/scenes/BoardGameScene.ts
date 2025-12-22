@@ -4,13 +4,15 @@ import { BoardGameState, BoardPosition, BoardMovement } from '../../types';
 import { gameEvents } from '../../gameEvents';
 
 const BOARD_COLORS = {
-  background: 0x1a1a2e,
-  boardBg: 0x16213e,
-  space: 0x0f3460,
-  spaceAlt: 0x1a1a2e,
+  background: 0xffffff,
+  boardBg: 0xf3f4f6,
+  space: 0xe5e7eb,
+  spaceAlt: 0xf3f4f6,
   ladder: 0x4ade80,
   chute: 0xf87171,
-  text: 0xffffff,
+  text: 0x171717,
+  accent: 0xdc2626,
+  border: 0xe5e7eb,
 };
 
 export class BoardGameScene extends Phaser.Scene {
@@ -78,7 +80,7 @@ export class BoardGameScene extends Phaser.Scene {
     // Create game title
     this.add.text(400, 30, 'Board Rush', {
       fontSize: '32px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -96,20 +98,20 @@ export class BoardGameScene extends Phaser.Scene {
     // Large title
     this.add.text(400, 50, '🎲 Board Rush', {
       fontSize: '36px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // Player name
     this.add.text(400, 100, playerName, {
       fontSize: '24px',
-      color: '#60a5fa',
+      color: '#dc2626',
     }).setOrigin(0.5);
 
     // Status text
     this.statusText = this.add.text(400, 170, 'Waiting for game...', {
       fontSize: '22px',
-      color: '#ffffff',
+      color: '#171717',
       align: 'center',
       wordWrap: { width: 700 },
     }).setOrigin(0.5);
@@ -131,7 +133,7 @@ export class BoardGameScene extends Phaser.Scene {
       this.socket.emit('bg:roll-dice');
       this.rollButton.setVisible(false);
       this.statusText.setText('Rolling...');
-    }, 0x3b82f6, 300, 80);
+    }, BOARD_COLORS.accent, 300, 80);
     this.rollButton.setVisible(false);
 
     // Trivia container
@@ -141,7 +143,7 @@ export class BoardGameScene extends Phaser.Scene {
     // Leave button
     this.createMobileButton(400, 550, 'Leave Game', () => {
       this.socket.emit('game:leave');
-    }, 0xef4444, 160, 50);
+    }, 0x6b7280, 160, 50);
   }
 
   private createMobileButton(
@@ -156,7 +158,7 @@ export class BoardGameScene extends Phaser.Scene {
     const container = this.add.container(x, y);
 
     const bg = this.add.rectangle(0, 0, width, height, color);
-    bg.setStrokeStyle(3, 0xffffff);
+    bg.setStrokeStyle(3, 0x171717, 0.2);
     bg.setInteractive({ useHandCursor: true });
 
     const label = this.add.text(0, 0, text, {
@@ -197,13 +199,13 @@ export class BoardGameScene extends Phaser.Scene {
 
       const color = i % 2 === 0 ? BOARD_COLORS.space : BOARD_COLORS.spaceAlt;
       const space = this.add.rectangle(x, y, spaceSize, spaceSize, color);
-      space.setStrokeStyle(2, 0x333355);
+      space.setStrokeStyle(2, BOARD_COLORS.border);
       this.boardSpaces.push(space);
 
       // Add space number
       this.add.text(x, y, i.toString(), {
         fontSize: '14px',
-        color: '#888899',
+        color: '#6b7280',
       }).setOrigin(0.5);
     }
 
@@ -235,10 +237,10 @@ export class BoardGameScene extends Phaser.Scene {
     });
 
     // Legend
-    this.add.rectangle(700, 80, 15, 15, BOARD_COLORS.ladder).setStrokeStyle(1, 0xffffff);
+    this.add.rectangle(700, 80, 15, 15, BOARD_COLORS.ladder).setStrokeStyle(1, 0x171717);
     this.add.text(715, 80, 'Ladder', { fontSize: '12px', color: '#4ade80' }).setOrigin(0, 0.5);
 
-    this.add.rectangle(700, 100, 15, 15, BOARD_COLORS.chute).setStrokeStyle(1, 0xffffff);
+    this.add.rectangle(700, 100, 15, 15, BOARD_COLORS.chute).setStrokeStyle(1, 0x171717);
     this.add.text(715, 100, 'Chute', { fontSize: '12px', color: '#f87171' }).setOrigin(0, 0.5);
   }
 
@@ -246,7 +248,7 @@ export class BoardGameScene extends Phaser.Scene {
     // Status text
     this.statusText = this.add.text(400, 70, 'Waiting for players to roll...', {
       fontSize: '24px',
-      color: '#ffffff',
+      color: '#171717',
     }).setOrigin(0.5);
 
     // Trivia container for displaying questions on TV (hidden initially)
@@ -257,7 +259,7 @@ export class BoardGameScene extends Phaser.Scene {
     this.standingsContainer = this.add.container(700, 200);
     this.add.text(700, 150, 'Standings', {
       fontSize: '18px',
-      color: '#ffffff',
+      color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -273,8 +275,8 @@ export class BoardGameScene extends Phaser.Scene {
   private createButton(x: number, y: number, text: string, callback: () => void): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
 
-    const bg = this.add.rectangle(0, 0, 100, 40, 0x3b82f6);
-    bg.setStrokeStyle(2, 0x60a5fa);
+    const bg = this.add.rectangle(0, 0, 100, 40, BOARD_COLORS.accent);
+    bg.setStrokeStyle(2, 0x171717, 0.2);
     bg.setInteractive({ useHandCursor: true });
 
     const label = this.add.text(0, 0, text, {
@@ -284,8 +286,8 @@ export class BoardGameScene extends Phaser.Scene {
 
     container.add([bg, label]);
 
-    bg.on('pointerover', () => bg.setFillStyle(0x60a5fa));
-    bg.on('pointerout', () => bg.setFillStyle(0x3b82f6));
+    bg.on('pointerover', () => bg.setFillStyle(0xb91c1c));
+    bg.on('pointerout', () => bg.setFillStyle(BOARD_COLORS.accent));
     bg.on('pointerdown', callback);
 
     return container;
@@ -482,7 +484,7 @@ export class BoardGameScene extends Phaser.Scene {
     // Large question display for TV
     const questionText = this.add.text(0, -80, question, {
       fontSize: '24px',
-      color: '#ffffff',
+      color: '#171717',
       wordWrap: { width: 600 },
       align: 'center',
     }).setOrigin(0.5);
@@ -491,11 +493,11 @@ export class BoardGameScene extends Phaser.Scene {
     // Show options (display only, not interactive)
     options.forEach((opt, i) => {
       const y = -20 + i * 45;
-      const optBg = this.add.rectangle(0, y, 500, 38, 0x3b82f6);
-      optBg.setStrokeStyle(2, 0x60a5fa);
+      const optBg = this.add.rectangle(0, y, 500, 38, BOARD_COLORS.boardBg);
+      optBg.setStrokeStyle(2, BOARD_COLORS.border);
       const optText = this.add.text(0, y, `${String.fromCharCode(65 + i)}. ${opt.text}`, {
         fontSize: '18px',
-        color: '#ffffff',
+        color: '#171717',
       }).setOrigin(0.5);
       this.triviaContainer.add([optBg, optText]);
     });
@@ -503,7 +505,7 @@ export class BoardGameScene extends Phaser.Scene {
     // Timer hint
     const timerText = this.add.text(0, 120, 'Answer on your phones!', {
       fontSize: '16px',
-      color: '#fbbf24',
+      color: '#dc2626',
     }).setOrigin(0.5);
     this.triviaContainer.add(timerText);
   }
@@ -531,7 +533,7 @@ export class BoardGameScene extends Phaser.Scene {
       // Create new token
       token = this.add.container(0, 0);
       const circle = this.add.circle(0, 0, 15, parseInt(color.replace('#', '0x')));
-      circle.setStrokeStyle(2, 0xffffff);
+      circle.setStrokeStyle(2, 0x171717);
       const initial = this.add.text(0, 0, name.charAt(0).toUpperCase(), {
         fontSize: '14px',
         color: '#ffffff',
@@ -660,19 +662,19 @@ export class BoardGameScene extends Phaser.Scene {
     data.options.forEach((opt, i) => {
       const y = -80 + i * 70;
 
-      const optBg = this.add.rectangle(0, y, 340, 60, 0x3b82f6);
-      optBg.setStrokeStyle(4, 0x60a5fa);
+      const optBg = this.add.rectangle(0, y, 340, 60, BOARD_COLORS.boardBg);
+      optBg.setStrokeStyle(4, BOARD_COLORS.border);
       optBg.setInteractive({ useHandCursor: true });
 
       const optText = this.add.text(0, y, `${String.fromCharCode(65 + i)}. ${opt.text}`, {
         fontSize: '18px',
-        color: '#ffffff',
+        color: '#171717',
         fontStyle: 'bold',
         wordWrap: { width: 320 },
       }).setOrigin(0.5);
 
-      optBg.on('pointerover', () => optBg.setAlpha(0.8));
-      optBg.on('pointerout', () => optBg.setAlpha(1));
+      optBg.on('pointerover', () => optBg.setStrokeStyle(4, BOARD_COLORS.accent));
+      optBg.on('pointerout', () => optBg.setStrokeStyle(4, BOARD_COLORS.border));
       optBg.on('pointerdown', () => {
         optBg.setScale(0.95);
         optBg.setFillStyle(0x22c55e);
@@ -696,7 +698,7 @@ export class BoardGameScene extends Phaser.Scene {
       const dot = this.add.circle(-40, y, 8, parseInt(color.replace('#', '0x')));
       const text = this.add.text(-25, y, `${i + 1}. ${player.playerName} (${player.position})`, {
         fontSize: '12px',
-        color: '#ffffff',
+        color: '#171717',
       }).setOrigin(0, 0.5);
 
       this.standingsContainer.add([dot, text]);

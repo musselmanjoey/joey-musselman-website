@@ -1,29 +1,55 @@
-# Claude Code Instructions
+# Joey Musselman Site
 
-## Project Overview
-Personal website and party games platform built with Next.js 15.
+Personal website and party games frontend. Built with Next.js 15.
 
-## Before Committing
-**ALWAYS check for secrets before committing:**
-- API keys
-- Database credentials
-- Environment variables that should stay in .env
-- Tokens, passwords, private keys
+## Commands
 
-Files to watch:
-- `.env`, `.env.local`, `.env.production`
-- Any hardcoded URLs with credentials
-- Config files with sensitive data
+```bash
+npm run dev          # Dev server (port 3000)
+npm run build        # Production build
+npm run lint         # ESLint check
+npx tsc --noEmit     # Type check
+```
 
-If secrets are found, add them to `.env.local` (gitignored) instead.
+## Project Structure
 
-## Tech Stack
-- Next.js 15 (App Router)
-- TypeScript
-- Tailwind CSS
-- Socket.IO for party games
+```
+app/
+├── page.tsx                    # Homepage
+├── globals.css                 # CSS variables & base styles
+├── layout.tsx                  # Root layout
+├── clown-club/                 # Virtual world routes
+│   ├── page.tsx               # Player entry (join LOBBY)
+│   ├── host/                  # TV/spectator display
+│   ├── world/                 # World views
+│   └── crown-card/            # Crown card feature
+├── party/                      # Legacy party routes
+│   └── ...
+├── admin/                      # Admin pages
+│   └── projects/              # Project management
+└── api/                        # API routes
+    └── admin/projects/        # Projects CRUD
+
+components/                     # Shared React components
+lib/                           # Utilities & Phaser integration
+```
+
+## Key Files
+
+- `lib/socket.ts` - Socket.IO client singleton
+- `lib/phaser/` - Phaser.js game integration
+- `components/` - Reusable React components
+- `.env.local` - Socket server URL (NEXT_PUBLIC_SOCKET_URL)
+
+## Related Projects
+
+| Project | Path | Description |
+|---------|------|-------------|
+| Game Server | `../clown-club/` | Socket.IO game server (port 3015) |
+| Ports Registry | `../ports.json` | Central port allocation |
 
 ## Styling
+
 Use CSS variables from globals.css:
 - `var(--foreground)` - dark text (#171717)
 - `var(--muted)` - gray text (#6b7280)
@@ -31,7 +57,69 @@ Use CSS variables from globals.css:
 - `var(--border)` - light gray border (#e5e7eb)
 - White backgrounds, minimal design
 
-## Party Games
-- Backend: party-games-server (Railway)
-- Frontend: /party routes
-- Socket server URL in NEXT_PUBLIC_GAME_SERVER_URL env var
+### Phaser Scene Colors
+
+All Phaser scenes use a consistent color palette matching CSS variables:
+
+```typescript
+const COLORS = {
+  background: 0xffffff,  // white
+  panel: 0xf3f4f6,       // light gray
+  accent: 0xdc2626,      // red
+  text: 0x171717,        // dark
+  muted: 0x6b7280,       // gray
+  border: 0xe5e7eb,      // light gray
+  success: 0x22c55e,     // green (for positive indicators)
+  gold: 0xfbbf24,        // gold (for scores/rankings)
+};
+```
+
+Text colors use hex strings: `'#171717'` (dark), `'#dc2626'` (red accent)
+
+## Socket Connection
+
+```typescript
+// Development: ws://localhost:3015
+// Production: Set NEXT_PUBLIC_SOCKET_URL in .env.local
+
+import { socket } from '@/lib/socket';
+
+// Clown Club events use 'cc:' prefix
+socket.emit('cc:join-room', { roomCode: 'LOBBY', playerName });
+socket.on('cc:world-state', (state) => { ... });
+```
+
+## Phaser Integration
+
+Phaser must be dynamically imported (SSR: false):
+```tsx
+const PhaserGame = dynamic(() => import('@/components/PhaserGame'), {
+  ssr: false
+});
+```
+
+### Asset System
+Using emoji placeholders initially - see `lib/phaser/assets/AssetRegistry.ts`
+To swap in sprites: update `spriteKey` property, no code changes needed elsewhere.
+
+### Multiplayer Architecture
+- All player positions are server-authoritative (anti-cheat)
+- Use interpolation for smooth remote player movement
+- Rate limit position updates to 10-15/second
+
+### Adding a New Character
+1. Add entry to `AssetRegistry.characters` with emoji
+2. Later: add sprite to `public/assets/`, update `spriteKey`
+
+## Pre-Commit Checklist
+
+1. `git status` - no `.env*`, credentials, or secrets
+2. `npx tsc --noEmit` - no type errors
+3. No `console.log` in production code
+4. Test at 375px viewport width
+
+## IMPORTANT
+
+- Socket server must be running for games to work
+- Phaser accesses `window` - always use dynamic import
+- Mobile-first: test at 375px width
