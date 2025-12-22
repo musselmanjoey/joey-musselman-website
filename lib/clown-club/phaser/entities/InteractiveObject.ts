@@ -38,6 +38,8 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
   }
 
   highlight() {
+    if (!this.scene) return;
+
     this.highlightCircle.setVisible(true);
 
     // Pulse animation

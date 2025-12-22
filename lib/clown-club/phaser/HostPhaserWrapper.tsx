@@ -10,8 +10,6 @@ import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS } from './assets/
 
 interface HostPhaserWrapperProps {
   socket: Socket;
-  gameActive: boolean;
-  gameType?: string;
 }
 
 // Boot scene that loads assets and waits for socket before starting world
@@ -116,7 +114,7 @@ function createHostGameConfig(parent: string): Phaser.Types.Core.GameConfig {
   };
 }
 
-export function HostPhaserWrapper({ socket, gameActive, gameType }: HostPhaserWrapperProps) {
+export function HostPhaserWrapper({ socket }: HostPhaserWrapperProps) {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -139,29 +137,8 @@ export function HostPhaserWrapper({ socket, gameActive, gameType }: HostPhaserWr
     };
   }, [socket]);
 
-  // Handle game active state changes
-  useEffect(() => {
-    if (!gameRef.current) return;
-
-    const game = gameRef.current;
-
-    if (gameActive) {
-      // Switch to appropriate game scene based on type
-      const sceneName = gameType === 'caption-contest' 
-        ? 'HostCaptionContestScene' 
-        : 'HostBoardGameScene';
-      console.log(`[HostWrapper] Switching to ${sceneName}`);
-      game.scene.start(sceneName);
-    } else {
-      // Return to world
-      if (game.scene.isActive('HostBoardGameScene')) {
-        game.scene.start('HostWorldScene');
-      }
-      if (game.scene.isActive('HostCaptionContestScene')) {
-        game.scene.start('HostWorldScene');
-      }
-    }
-  }, [gameActive, gameType]);
+  // Scene switching is now handled by HostWorldScene internally
+  // via the "View Game" button
 
   return (
     <div

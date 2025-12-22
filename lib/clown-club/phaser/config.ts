@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { LobbyScene } from './scenes/LobbyScene';
+import { GamesRoomScene } from './scenes/GamesRoomScene';
 import { BoardGameScene } from './scenes/BoardGameScene';
 import { CaptionContestScene } from './scenes/CaptionContestScene';
 
@@ -15,7 +16,7 @@ export function createGameConfig(parent: string): Phaser.Types.Core.GameConfig {
       mode: Phaser.Scale.FIT, // Fit whole game, letterbox if needed
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, LobbyScene, BoardGameScene, CaptionContestScene],
+    scene: [BootScene, LobbyScene, GamesRoomScene, BoardGameScene, CaptionContestScene],
     dom: {
       createContainer: true, // Enable DOM elements for text input
     },

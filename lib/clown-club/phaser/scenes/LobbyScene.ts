@@ -48,7 +48,6 @@ export class LobbyScene extends Phaser.Scene {
     // Get socket and player data from registry
     this.socket = this.registry.get('socket');
     this.playerId = this.registry.get('playerId');
-    const playerName = this.registry.get('playerName');
 
     // Create ground (simple colored rect for now)
     this.createBackground();
@@ -61,6 +60,9 @@ export class LobbyScene extends Phaser.Scene {
 
     // Request world state from server (scene is now ready to receive it)
     this.socket.emit('cc:request-state');
+
+    // Fade in (handles both initial load and returning from other zones)
+    this.cameras.main.fadeIn(500, 0, 0, 0);
   }
 
   private createBackground() {
@@ -390,10 +392,28 @@ export class LobbyScene extends Phaser.Scene {
     // Interaction result
     addListener('cc:interaction-result', (data: unknown) => {
       const result = data as InteractionResult;
-      if (result.success && result.action === 'launch-game') {
-        // Show game selector overlay
-        this.showGameSelector();
+      if (result.success) {
+        if (result.action === 'zone-change' && result.targetZone) {
+          // Transition to the target zone with fade effect
+          this.transitionToZone(result.targetZone);
+        } else if (result.action === 'launch-game') {
+          // Show game selector overlay
+          this.showGameSelector();
+        }
       }
+    });
+
+    // Zone changed - update scene
+    addListener('cc:zone-changed', (data: unknown) => {
+      const { zoneId } = data as { zoneId: string; zoneName: string };
+      // Scene transition happens in transitionToZone after fade completes
+      // The new zone's world state will be received via cc:world-state
+      if (zoneId === 'games') {
+        // Clean up before switching scenes
+        this.cleanupSocketListeners();
+        this.scene.start('GamesRoomScene');
+      }
+      // If going back to lobby, we're already in LobbyScene, just fade in
     });
 
     // Joined the game queue
@@ -722,5 +742,18 @@ export class LobbyScene extends Phaser.Scene {
       this.gameSelectOverlay.destroy();
       this.gameSelectOverlay = undefined;
     }
+  }
+
+  /**
+   * Transition to a different zone with Club Penguin-style fade effect
+   */
+  private transitionToZone(targetZone: string) {
+    // Fade out to black
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      // Request zone change from server
+      this.socket.emit('cc:change-zone', { targetZone });
+    });
   }
 }

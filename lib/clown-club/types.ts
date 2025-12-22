@@ -27,7 +27,10 @@ export interface GameEndedData {
 export interface InteractionResult {
   objectId: string;
   success: boolean;
-  action?: string;
+  action?: 'zone-change' | 'launch-game' | 'none';
+  targetZone?: string;
+  gameType?: string;
+  label?: string;
   availableGames?: GameInfo[];
 }
 

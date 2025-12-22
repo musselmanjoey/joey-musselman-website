@@ -111,6 +111,27 @@ To swap in sprites: update `spriteKey` property, no code changes needed elsewher
 1. Add entry to `AssetRegistry.characters` with emoji
 2. Later: add sprite to `public/assets/`, update `spriteKey`
 
+### Zone System (Scenes)
+
+Club Penguin-style multi-room navigation with fade transitions:
+
+**Player Scenes:**
+- `LobbyScene` - Main town square, door to games room
+- `GamesRoomScene` - Arcade room with game cabinets
+
+**Host Scenes:**
+- `HostWorldScene` - TV display with zone tabs (Lobby/Games Room)
+- `HostBoardGameScene` / `HostCaptionContestScene` - Game displays
+
+**Zone Flow:**
+1. Player clicks door → fade out → `cc:change-zone` → server moves player → `cc:zone-changed` → fade in new scene
+2. Host clicks zone tabs → `cc:spectator-change-zone` → view updates
+
+**Key files:**
+- `scenes/LobbyScene.ts` - Main lobby with zone transitions
+- `scenes/GamesRoomScene.ts` - Arcade room with game cabinets
+- `scenes/HostWorldScene.ts` - Host view with zone tabs, game queue overlay
+
 ### Character Sprite Animation (TODO)
 Currently using emoji placeholders. Next steps for Club Penguin-style animated sprites:
 

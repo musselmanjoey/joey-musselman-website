@@ -28,9 +28,8 @@ export default function HostPage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [roomCode] = useState('LOBBY');
-  const [gameActive, setGameActive] = useState(false);
-  const [gameType, setGameType] = useState<string | undefined>(undefined);
   const [playerCount, setPlayerCount] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
 
   useEffect(() => {
     const s = connectSocket();
@@ -63,16 +62,16 @@ export default function HostPage() {
       setPlayerCount(prev => Math.max(0, prev - 1));
     });
 
+    // Track game state for status display only
+    // Scene switching is handled by HostWorldScene internally
     s.on('game:started', (data: { gameType?: string }) => {
       console.log('[Host] Game started:', data);
       setGameActive(true);
-      setGameType(data?.gameType);
     });
 
     s.on('game:ended', (data: unknown) => {
       console.log('[Host] Game ended:', data);
       setGameActive(false);
-      setGameType(undefined);
     });
 
     // Debug: log all events
@@ -105,6 +104,9 @@ export default function HostPage() {
     <div className="w-full h-screen bg-gray-900 overflow-hidden">
       {/* Connection status */}
       <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
+        {gameActive && (
+          <span className="text-yellow-400 text-sm font-medium mr-2">🎮 Game Active</span>
+        )}
         <span className="text-white text-sm">{playerCount} players</span>
         <div className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
       </div>
@@ -129,8 +131,8 @@ export default function HostPage() {
         </div>
       </div>
 
-      {/* Phaser game display */}
-      <HostPhaserWrapper socket={socket} gameActive={gameActive} gameType={gameType} />
+      {/* Phaser game display - scene switching handled internally */}
+      <HostPhaserWrapper socket={socket} />
     </div>
   );
 }
