@@ -111,6 +111,27 @@ To swap in sprites: update `spriteKey` property, no code changes needed elsewher
 1. Add entry to `AssetRegistry.characters` with emoji
 2. Later: add sprite to `public/assets/`, update `spriteKey`
 
+### Character Sprite Animation (TODO)
+Currently using emoji placeholders. Next steps for Club Penguin-style animated sprites:
+
+**Key files for player rendering:**
+- `lib/clown-club/phaser/assets/AssetRegistry.ts` - Character registry (swap emoji → spriteKey)
+- `lib/clown-club/phaser/scenes/LobbyScene.ts:497` - Player sprite creation
+- `lib/clown-club/phaser/scenes/HostWorldScene.ts:566` - Host display player rendering
+
+**Sprite requirements:**
+- Spritesheet with walk animation frames (up, down, left, right)
+- Idle frame(s)
+- Recommended: 64x64 or 128x128 per frame
+- Format: PNG spritesheet or individual frames
+
+**To implement animated walk:**
+1. Generate spritesheets (e.g., via Gemini/AI image gen)
+2. Place in `public/assets/characters/`
+3. Load in BootScene with `this.load.spritesheet()`
+4. Update player rendering to use `this.add.sprite()` + `this.anims.create()`
+5. Play walk animation based on movement direction
+
 ## Pre-Commit Checklist
 
 1. `git status` - no `.env*`, credentials, or secrets
