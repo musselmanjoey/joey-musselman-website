@@ -1,5 +1,8 @@
 import * as Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
+import { characters } from '../assets/AssetRegistry';
+
+type Direction = 'down' | 'left' | 'right' | 'up';
 
 interface PlayerData {
   id: string;
@@ -8,6 +11,16 @@ interface PlayerData {
   y: number;
   character: string;
   isVIP?: boolean;
+}
+
+interface PlayerContainer extends Phaser.GameObjects.Container {
+  sprite?: Phaser.GameObjects.Sprite;
+  emoji?: Phaser.GameObjects.Text;
+  spriteKey?: string | null;
+  currentDirection?: Direction;
+  isMoving?: boolean;
+  lastX?: number;
+  lastY?: number;
 }
 
 interface WorldState {
@@ -21,7 +34,7 @@ interface WorldState {
  */
 export class HostWorldScene extends Phaser.Scene {
   private socket!: Socket;
-  private players: Map<string, Phaser.GameObjects.Container> = new Map();
+  private players: Map<string, PlayerContainer> = new Map();
   private arcadeOverlay?: Phaser.GameObjects.Container;
   private isShowingArcade = false;
   private queuedPlayers: { id: string; name: string }[] = [];
@@ -554,21 +567,47 @@ export class HostWorldScene extends Phaser.Scene {
     const x = data.x * scaleX;
     const y = data.y * scaleY;
 
-    const container = this.add.container(x, y);
+    const container = this.add.container(x, y) as PlayerContainer;
     const children: Phaser.GameObjects.GameObject[] = [];
+
+    // Look up sprite key from character type
+    const charConfig = Object.entries(characters).find(
+      ([, config]) => config.emoji === data.character
+    );
+    const spriteKey = charConfig?.[1].spriteKey || null;
+    container.spriteKey = spriteKey;
+    container.currentDirection = 'down';
+    container.isMoving = false;
+    container.lastX = x;
+    container.lastY = y;
 
     // Crown for VIP players
     if (data.isVIP) {
-      const crown = this.add.text(0, -35, '👑', { fontSize: '28px' }).setOrigin(0.5);
+      const crown = this.add.text(0, spriteKey ? -45 : -35, '👑', { fontSize: '28px' }).setOrigin(0.5);
       children.push(crown);
     }
 
-    // Player body (use their selected character emoji)
-    const body = this.add.text(0, 0, data.character || '🤡', { fontSize: '40px' }).setOrigin(0.5);
-    children.push(body);
+    // Create sprite or fallback to emoji
+    if (spriteKey && this.textures.exists(spriteKey)) {
+      const sprite = this.add.sprite(0, 0, spriteKey);
+      sprite.setOrigin(0.5, 0.5);
+      // Scale down large sprites (clown is 256x256)
+      if (spriteKey.startsWith('clown')) {
+        sprite.setScale(0.25);
+      }
+      sprite.play(`${spriteKey}-idle-down`);
+      container.sprite = sprite;
+      children.push(sprite);
+    } else {
+      // Fallback to emoji
+      const body = this.add.text(0, 0, data.character || '🤡', { fontSize: '40px' }).setOrigin(0.5);
+      container.emoji = body;
+      children.push(body);
+    }
 
     // Name tag
-    const name = this.add.text(0, 30, data.name, {
+    const nameTagY = spriteKey ? 45 : 30;
+    const name = this.add.text(0, nameTagY, data.name, {
       fontSize: '14px',
       color: '#ffffff',
       backgroundColor: '#00000080',
@@ -590,19 +629,64 @@ export class HostWorldScene extends Phaser.Scene {
     }
   }
 
+  private getDirection(dx: number, dy: number): Direction {
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (absDx > absDy) {
+      return dx < 0 ? 'left' : 'right';
+    } else {
+      return dy < 0 ? 'up' : 'down';
+    }
+  }
+
+  private playPlayerAnimation(player: PlayerContainer, direction: Direction, moving: boolean) {
+    if (!player.sprite || !player.spriteKey) return;
+
+    const animType = moving ? 'walk' : 'idle';
+    const animKey = `${player.spriteKey}-${animType}-${direction}`;
+
+    if (player.sprite.anims.currentAnim?.key !== animKey) {
+      player.sprite.play(animKey);
+    }
+  }
+
   private movePlayer(playerId: string, x: number, y: number) {
     const player = this.players.get(playerId);
     if (player) {
       // Scale positions
       const scaleX = 1280 / 800;
       const scaleY = 720 / 600;
+      const targetX = x * scaleX;
+      const targetY = y * scaleY;
+
+      // Calculate direction based on movement
+      const dx = targetX - (player.lastX || player.x);
+      const dy = targetY - (player.lastY || player.y);
+
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        const direction = this.getDirection(dx, dy);
+        player.currentDirection = direction;
+        player.isMoving = true;
+        this.playPlayerAnimation(player, direction, true);
+      }
+
+      player.lastX = targetX;
+      player.lastY = targetY;
 
       this.tweens.add({
         targets: player,
-        x: x * scaleX,
-        y: y * scaleY,
+        x: targetX,
+        y: targetY,
         duration: 200,
         ease: 'Linear',
+        onComplete: () => {
+          // Play idle animation when stopped
+          if (player.isMoving) {
+            player.isMoving = false;
+            this.playPlayerAnimation(player, player.currentDirection || 'down', false);
+          }
+        },
       });
     }
   }

@@ -1,8 +1,11 @@
 import * as Phaser from 'phaser';
-import { emotes } from '../assets/AssetRegistry';
+import { emotes, characters } from '../assets/AssetRegistry';
+
+type Direction = 'down' | 'left' | 'right' | 'up';
 
 export class Player extends Phaser.GameObjects.Container {
-  private emoji: Phaser.GameObjects.Text;
+  private sprite?: Phaser.GameObjects.Sprite;
+  private emoji?: Phaser.GameObjects.Text;
   private nameTag: Phaser.GameObjects.Text;
   private crown?: Phaser.GameObjects.Text;
   private emoteText?: Phaser.GameObjects.Text;
@@ -10,6 +13,10 @@ export class Player extends Phaser.GameObjects.Container {
   private targetX?: number;
   private targetY?: number;
   private moveSpeed: number = 200;
+  private spriteKey: string | null = null;
+  private currentDirection: Direction = 'down';
+  private isMoving: boolean = false;
+  private walkBobPhase: number = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -21,22 +28,42 @@ export class Player extends Phaser.GameObjects.Container {
   ) {
     super(scene, x, y);
 
+    // Look up sprite key from character type (e.g., 'penguin' -> 'penguin-blue')
+    const charConfig = Object.entries(characters).find(
+      ([, config]) => config.emoji === character
+    );
+    this.spriteKey = charConfig?.[1].spriteKey || null;
+
     // Crown for VIP players (above character)
     if (isVIP) {
-      this.crown = scene.add.text(0, -30, '👑', {
+      this.crown = scene.add.text(0, -40, '👑', {
         fontSize: '24px',
       });
       this.crown.setOrigin(0.5);
     }
 
-    // Character emoji (use the emoji directly, fallback to clown)
-    this.emoji = scene.add.text(0, 0, character || '🤡', {
-      fontSize: '48px',
-    });
-    this.emoji.setOrigin(0.5);
+    // Create sprite or fallback to emoji
+    if (this.spriteKey && scene.textures.exists(this.spriteKey)) {
+      this.sprite = scene.add.sprite(0, 0, this.spriteKey);
+      this.sprite.setOrigin(0.5, 0.5);
+      // Scale sprites to approximately 64px height
+      if (this.spriteKey.startsWith('clown')) {
+        this.sprite.setScale(0.25); // 256 * 0.25 = 64px
+      } else if (this.spriteKey === 'green-cap') {
+        this.sprite.setScale(3); // 18 * 3 = 54px (close to other sprites)
+      }
+      this.sprite.play(`${this.spriteKey}-idle-down`);
+    } else {
+      // Fallback to emoji
+      this.emoji = scene.add.text(0, 0, character || '🤡', {
+        fontSize: '48px',
+      });
+      this.emoji.setOrigin(0.5);
+    }
 
-    // Name tag
-    this.nameTag = scene.add.text(0, 35, name, {
+    // Name tag (positioned below sprite/emoji)
+    const nameTagY = this.sprite ? 40 : 35;
+    this.nameTag = scene.add.text(0, nameTagY, name, {
       fontSize: '14px',
       color: '#ffffff',
       backgroundColor: '#000000aa',
@@ -45,8 +72,11 @@ export class Player extends Phaser.GameObjects.Container {
     this.nameTag.setOrigin(0.5);
 
     // Add all elements to container
-    const children: Phaser.GameObjects.GameObject[] = [this.emoji, this.nameTag];
-    if (this.crown) children.unshift(this.crown);
+    const children: Phaser.GameObjects.GameObject[] = [];
+    if (this.crown) children.push(this.crown);
+    if (this.sprite) children.push(this.sprite);
+    if (this.emoji) children.push(this.emoji);
+    children.push(this.nameTag);
     this.add(children);
 
     scene.add.existing(this);
@@ -60,6 +90,30 @@ export class Player extends Phaser.GameObjects.Container {
     this.targetY = y;
   }
 
+  private getDirection(dx: number, dy: number): Direction {
+    // Determine primary direction based on movement delta
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (absDx > absDy) {
+      return dx < 0 ? 'left' : 'right';
+    } else {
+      return dy < 0 ? 'up' : 'down';
+    }
+  }
+
+  private playAnimation(direction: Direction, moving: boolean) {
+    if (!this.sprite || !this.spriteKey) return;
+
+    const animType = moving ? 'walk' : 'idle';
+    const animKey = `${this.spriteKey}-${animType}-${direction}`;
+
+    // Only change animation if different
+    if (this.sprite.anims.currentAnim?.key !== animKey) {
+      this.sprite.play(animKey);
+    }
+  }
+
   showEmote(emoteId: string) {
     const emoteEmoji = emotes[emoteId] || '❓';
 
@@ -69,7 +123,8 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     // Show emote above character
-    this.emoteText = this.scene.add.text(0, -50, emoteEmoji, {
+    const emoteY = this.sprite ? -50 : -50;
+    this.emoteText = this.scene.add.text(0, emoteY, emoteEmoji, {
       fontSize: '32px',
     });
     this.emoteText.setOrigin(0.5);
@@ -79,7 +134,7 @@ export class Player extends Phaser.GameObjects.Container {
     this.scene.tweens.add({
       targets: this.emoteText,
       alpha: 0,
-      y: -80,
+      y: emoteY - 30,
       duration: 2000,
       onComplete: () => {
         this.emoteText?.destroy();
@@ -95,7 +150,8 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     // Create bubble container
-    this.chatBubble = this.scene.add.container(0, -60);
+    const bubbleY = this.sprite ? -70 : -60;
+    this.chatBubble = this.scene.add.container(0, bubbleY);
 
     // Bubble text
     const text = this.scene.add.text(0, 0, message, {
@@ -147,7 +203,15 @@ export class Player extends Phaser.GameObjects.Container {
   }
 
   update(delta: number) {
-    if (this.targetX === undefined || this.targetY === undefined) return;
+    if (this.targetX === undefined || this.targetY === undefined) {
+      // Not moving - play idle animation and reset bob
+      if (this.isMoving) {
+        this.isMoving = false;
+        this.playAnimation(this.currentDirection, false);
+        if (this.sprite) this.sprite.y = 0; // Reset bob
+      }
+      return;
+    }
 
     const dx = this.targetX - this.x;
     const dy = this.targetY - this.y;
@@ -161,11 +225,22 @@ export class Player extends Phaser.GameObjects.Container {
       this.x += moveX;
       this.y += moveY;
 
-      // Flip character based on direction
-      if (dx < -5) {
-        this.emoji.setScale(-1, 1);
-      } else if (dx > 5) {
-        this.emoji.setScale(1, 1);
+      // Update direction and animation
+      const newDirection = this.getDirection(dx, dy);
+      if (newDirection !== this.currentDirection || !this.isMoving) {
+        this.currentDirection = newDirection;
+        this.isMoving = true;
+        this.playAnimation(newDirection, true);
+      }
+
+
+      // Fallback: flip emoji for left/right (if no sprite)
+      if (this.emoji) {
+        if (dx < -5) {
+          this.emoji.setScale(-1, 1);
+        } else if (dx > 5) {
+          this.emoji.setScale(1, 1);
+        }
       }
 
       // Update depth for layering
@@ -174,6 +249,9 @@ export class Player extends Phaser.GameObjects.Container {
       // Arrived at destination
       this.targetX = undefined;
       this.targetY = undefined;
+      this.isMoving = false;
+      this.playAnimation(this.currentDirection, false);
+      if (this.sprite) this.sprite.y = 0; // Reset bob
     }
   }
 }

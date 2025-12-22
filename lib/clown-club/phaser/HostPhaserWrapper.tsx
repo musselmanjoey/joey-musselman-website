@@ -6,6 +6,7 @@ import { Socket } from 'socket.io-client';
 import { HostWorldScene } from './scenes/HostWorldScene';
 import { HostBoardGameScene } from './scenes/HostBoardGameScene';
 import { HostCaptionContestScene } from './scenes/HostCaptionContestScene';
+import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS } from './assets/AssetRegistry';
 
 interface HostPhaserWrapperProps {
   socket: Socket;
@@ -13,13 +14,26 @@ interface HostPhaserWrapperProps {
   gameType?: string;
 }
 
-// Boot scene that waits for socket before starting world
+// Boot scene that loads assets and waits for socket before starting world
 class HostBootScene extends Phaser.Scene {
   constructor() {
     super('HostBootScene');
   }
 
+  preload() {
+    // Load all character spritesheets
+    Object.values(spriteConfigs).forEach((config) => {
+      this.load.spritesheet(config.key, config.path, {
+        frameWidth: config.frameWidth,
+        frameHeight: config.frameHeight,
+      });
+    });
+  }
+
   create() {
+    // Create character animations
+    this.createCharacterAnimations();
+
     // Show loading
     this.add.rectangle(640, 360, 1280, 720, 0xffffff);
     this.add.text(640, 360, '📺 Loading TV Display...', {
@@ -38,6 +52,52 @@ class HostBootScene extends Phaser.Scene {
       }
     };
     checkSocket();
+  }
+
+  private createCharacterAnimations() {
+    Object.values(spriteConfigs).forEach((config) => {
+      const { key, columns } = config;
+
+      if (key.startsWith('clown')) {
+        // Clown sprites: rows are directions, columns are walk cycle frames
+        Object.entries(CLOWN_DIRECTION_ROWS).forEach(([dirName, rowIndex]) => {
+          const startFrame = rowIndex * columns;
+
+          this.anims.create({
+            key: `${key}-idle-${dirName}`,
+            frames: [{ key, frame: startFrame }],
+            frameRate: 1,
+          });
+
+          const walkFrames = [];
+          for (let i = 0; i < columns; i++) {
+            walkFrames.push({ key, frame: startFrame + i });
+          }
+
+          this.anims.create({
+            key: `${key}-walk-${dirName}`,
+            frames: walkFrames,
+            frameRate: 8,
+            repeat: -1,
+          });
+        });
+      } else {
+        // Penguin-style sprites
+        Object.entries(DIRECTION_4_TO_8).forEach(([dirName, colIndex]) => {
+          this.anims.create({
+            key: `${key}-idle-${dirName}`,
+            frames: [{ key, frame: colIndex }],
+            frameRate: 1,
+          });
+
+          this.anims.create({
+            key: `${key}-walk-${dirName}`,
+            frames: [{ key, frame: colIndex }],
+            frameRate: 1,
+          });
+        });
+      }
+    });
   }
 }
 

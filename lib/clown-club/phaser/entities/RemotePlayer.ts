@@ -1,8 +1,11 @@
 import * as Phaser from 'phaser';
-import { emotes } from '../assets/AssetRegistry';
+import { emotes, characters } from '../assets/AssetRegistry';
+
+type Direction = 'down' | 'left' | 'right' | 'up';
 
 export class RemotePlayer extends Phaser.GameObjects.Container {
-  private emoji: Phaser.GameObjects.Text;
+  private sprite?: Phaser.GameObjects.Sprite;
+  private emoji?: Phaser.GameObjects.Text;
   private nameTag: Phaser.GameObjects.Text;
   private crown?: Phaser.GameObjects.Text;
   private emoteText?: Phaser.GameObjects.Text;
@@ -10,6 +13,9 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
   private targetX: number;
   private targetY: number;
   private lerpFactor: number = 0.1;
+  private spriteKey: string | null = null;
+  private currentDirection: Direction = 'down';
+  private isMoving: boolean = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -24,22 +30,42 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     this.targetX = x;
     this.targetY = y;
 
+    // Look up sprite key from character type
+    const charConfig = Object.entries(characters).find(
+      ([, config]) => config.emoji === character
+    );
+    this.spriteKey = charConfig?.[1].spriteKey || null;
+
     // Crown for VIP players
     if (isVIP) {
-      this.crown = scene.add.text(0, -30, '👑', {
+      this.crown = scene.add.text(0, -40, '👑', {
         fontSize: '24px',
       });
       this.crown.setOrigin(0.5);
     }
 
-    // Character emoji (use emoji directly)
-    this.emoji = scene.add.text(0, 0, character || '🤡', {
-      fontSize: '48px',
-    });
-    this.emoji.setOrigin(0.5);
+    // Create sprite or fallback to emoji
+    if (this.spriteKey && scene.textures.exists(this.spriteKey)) {
+      this.sprite = scene.add.sprite(0, 0, this.spriteKey);
+      this.sprite.setOrigin(0.5, 0.5);
+      // Scale sprites to approximately 64px height
+      if (this.spriteKey.startsWith('clown')) {
+        this.sprite.setScale(0.25); // 256 * 0.25 = 64px
+      } else if (this.spriteKey === 'green-cap') {
+        this.sprite.setScale(3); // 18 * 3 = 54px
+      }
+      this.sprite.play(`${this.spriteKey}-idle-down`);
+    } else {
+      // Fallback to emoji
+      this.emoji = scene.add.text(0, 0, character || '🤡', {
+        fontSize: '48px',
+      });
+      this.emoji.setOrigin(0.5);
+    }
 
     // Name tag
-    this.nameTag = scene.add.text(0, 35, name, {
+    const nameTagY = this.sprite ? 40 : 35;
+    this.nameTag = scene.add.text(0, nameTagY, name, {
       fontSize: '14px',
       color: '#ffffff',
       backgroundColor: '#000000aa',
@@ -47,20 +73,57 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     });
     this.nameTag.setOrigin(0.5);
 
-    const children: Phaser.GameObjects.GameObject[] = [this.emoji, this.nameTag];
-    if (this.crown) children.unshift(this.crown);
+    const children: Phaser.GameObjects.GameObject[] = [];
+    if (this.crown) children.push(this.crown);
+    if (this.sprite) children.push(this.sprite);
+    if (this.emoji) children.push(this.emoji);
+    children.push(this.nameTag);
     this.add(children);
 
     scene.add.existing(this);
     this.setDepth(y);
   }
 
+  private getDirection(dx: number, dy: number): Direction {
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (absDx > absDy) {
+      return dx < 0 ? 'left' : 'right';
+    } else {
+      return dy < 0 ? 'up' : 'down';
+    }
+  }
+
+  private playAnimation(direction: Direction, moving: boolean) {
+    if (!this.sprite || !this.spriteKey) return;
+
+    const animType = moving ? 'walk' : 'idle';
+    const animKey = `${this.spriteKey}-${animType}-${direction}`;
+
+    if (this.sprite.anims.currentAnim?.key !== animKey) {
+      this.sprite.play(animKey);
+    }
+  }
+
   moveToPoint(x: number, y: number) {
-    // Flip based on movement direction
-    if (x < this.targetX - 5) {
-      this.emoji.setScale(-1, 1);
-    } else if (x > this.targetX + 5) {
-      this.emoji.setScale(1, 1);
+    const dx = x - this.targetX;
+    const dy = y - this.targetY;
+
+    // Update direction based on movement
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      this.currentDirection = this.getDirection(dx, dy);
+      this.isMoving = true;
+      this.playAnimation(this.currentDirection, true);
+    }
+
+    // Fallback: flip emoji for left/right
+    if (this.emoji) {
+      if (dx < -5) {
+        this.emoji.setScale(-1, 1);
+      } else if (dx > 5) {
+        this.emoji.setScale(1, 1);
+      }
     }
 
     this.targetX = x;
@@ -74,7 +137,8 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
       this.emoteText.destroy();
     }
 
-    this.emoteText = this.scene.add.text(0, -50, emoteEmoji, {
+    const emoteY = this.sprite ? -50 : -50;
+    this.emoteText = this.scene.add.text(0, emoteY, emoteEmoji, {
       fontSize: '32px',
     });
     this.emoteText.setOrigin(0.5);
@@ -83,7 +147,7 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     this.scene.tweens.add({
       targets: this.emoteText,
       alpha: 0,
-      y: -80,
+      y: emoteY - 30,
       duration: 2000,
       onComplete: () => {
         this.emoteText?.destroy();
@@ -97,7 +161,8 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
       this.chatBubble.destroy();
     }
 
-    this.chatBubble = this.scene.add.container(0, -60);
+    const bubbleY = this.sprite ? -70 : -60;
+    this.chatBubble = this.scene.add.container(0, bubbleY);
 
     const text = this.scene.add.text(0, 0, message, {
       fontSize: '14px',
@@ -146,7 +211,6 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
 
   update(delta: number) {
     // Smooth interpolation toward target position
-    // Use delta-based lerp for consistent speed across frame rates
     const t = 1 - Math.pow(1 - this.lerpFactor, delta / 16.67);
 
     const dx = this.targetX - this.x;
@@ -160,6 +224,12 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     } else {
       this.x = this.targetX;
       this.y = this.targetY;
+
+      // Stopped moving - play idle
+      if (this.isMoving) {
+        this.isMoving = false;
+        this.playAnimation(this.currentDirection, false);
+      }
     }
 
     // Update depth for layering

@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
 const EMOJI_OPTIONS = [
-  '🤡', '🐸', '🐱', '🐶', '🦊', '🐼', '🐨', '🐯',
-  '🦁', '🐮', '🐷', '🐵', '🐰', '🐻', '🐔', '🦄',
+  '🤡', '🐧', '🧢', '🐸', '🐱', '🐶', '🦊', '🐼',
+  '🐨', '🐯', '🦁', '🐮', '🐷', '🐵', '🐰', '🐻',
 ];
 
 const VIP_SECRET = 'CLOWNKING';
