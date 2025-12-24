@@ -5,6 +5,7 @@ import { RemotePlayer } from '../entities/RemotePlayer';
 import { InteractiveObject } from '../entities/InteractiveObject';
 import { GameInfo, InteractionResult, GameStartedData } from '../../types';
 import { gameEvents } from '../../gameEvents';
+import { Theme, THEME_ASSET_KEYS } from '../ThemeLoader';
 
 interface PlayerData {
   id: string;
@@ -39,9 +40,12 @@ export class LobbyScene extends Phaser.Scene {
   private waitingOverlay?: Phaser.GameObjects.Container;
   private waitingText?: Phaser.GameObjects.Text;
   private gameSelectOverlay?: Phaser.GameObjects.Container;
+  private constructionOverlay?: Phaser.GameObjects.Container;
   private waitingDotsTimer?: Phaser.Time.TimerEvent;
   private lastMoveTime: number = 0;
   private static readonly MOVE_THROTTLE_MS = 100;
+  private activeTheme?: Theme;
+  private themeAssetsLoaded = false;
 
   constructor() {
     super('LobbyScene');
@@ -52,8 +56,16 @@ export class LobbyScene extends Phaser.Scene {
     this.socket = this.registry.get('socket');
     this.playerId = this.registry.get('playerId');
 
-    // Create ground (simple colored rect for now)
-    this.createBackground();
+    // Get theme info from registry
+    this.activeTheme = this.registry.get('activeTheme');
+    this.themeAssetsLoaded = this.registry.get('themeAssetsLoaded') || false;
+
+    // Create background (themed if assets loaded, otherwise procedural)
+    if (this.themeAssetsLoaded && this.activeTheme) {
+      this.createThemedBackground();
+    } else {
+      this.createProceduralBackground();
+    }
 
     // Setup socket listeners
     this.setupSocketListeners();
@@ -76,9 +88,126 @@ export class LobbyScene extends Phaser.Scene {
     this.cleanupSocketListeners();
     this.hideWaitingOverlay();
     this.hideGameSelector();
+    this.hideConstructionMessage();
   }
 
-  private createBackground() {
+  /**
+   * Create background from loaded theme assets (images)
+   */
+  private createThemedBackground() {
+    if (!this.activeTheme) return;
+
+    const width = 800;
+    const height = 600;
+
+    // Sky layer (full background)
+    if (this.textures.exists(THEME_ASSET_KEYS.SKY)) {
+      const sky = this.add.image(width / 2, 200, THEME_ASSET_KEYS.SKY);
+      sky.setDisplaySize(width, 400);
+      sky.setDepth(-100);
+    }
+
+    // Horizon layer (mountains/distant scenery)
+    if (this.textures.exists(THEME_ASSET_KEYS.HORIZON)) {
+      const horizon = this.add.image(width / 2, 300, THEME_ASSET_KEYS.HORIZON);
+      horizon.setDisplaySize(width, 200);
+      horizon.setDepth(-90);
+    }
+
+    // Ground layer
+    if (this.textures.exists(THEME_ASSET_KEYS.GROUND)) {
+      const ground = this.add.image(width / 2, 450, THEME_ASSET_KEYS.GROUND);
+      ground.setDisplaySize(width, 300);
+      ground.setDepth(-80);
+    }
+
+    // Buildings
+    const buildings = this.activeTheme.buildings;
+
+    if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_LEFT)) {
+      const left = this.add.image(buildings.left.x, buildings.left.y, THEME_ASSET_KEYS.BUILDING_LEFT);
+      left.setOrigin(0.5, 1);
+      left.setDepth(-50);
+      this.add.text(buildings.left.x, buildings.left.y + 10, buildings.left.label, {
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: '#00000080',
+        padding: { x: 6, y: 2 },
+      }).setOrigin(0.5).setDepth(-49);
+    }
+
+    if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_CENTER)) {
+      const center = this.add.image(buildings.center.x, buildings.center.y, THEME_ASSET_KEYS.BUILDING_CENTER);
+      center.setOrigin(0.5, 1);
+      center.setDepth(-50);
+      this.add.text(buildings.center.x, buildings.center.y + 10, buildings.center.label, {
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: '#00000080',
+        padding: { x: 6, y: 2 },
+      }).setOrigin(0.5).setDepth(-49);
+    }
+
+    if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_RIGHT)) {
+      const right = this.add.image(buildings.right.x, buildings.right.y, THEME_ASSET_KEYS.BUILDING_RIGHT);
+      right.setOrigin(0.5, 1);
+      right.setDepth(-50);
+      this.add.text(buildings.right.x, buildings.right.y + 10, buildings.right.label, {
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: '#00000080',
+        padding: { x: 6, y: 2 },
+      }).setOrigin(0.5).setDepth(-49);
+    }
+
+    // Props
+    this.activeTheme.props.forEach((prop, index) => {
+      const key = THEME_ASSET_KEYS.PROP_PREFIX + index;
+      if (this.textures.exists(key)) {
+        const propSprite = this.add.image(prop.x, prop.y, key);
+        propSprite.setOrigin(0.5, 1);
+        propSprite.setDepth(-30);
+      }
+    });
+
+    // Add theme-based effects
+    if (this.activeTheme.effects?.snowfall) {
+      this.createSnowfallEffect();
+    }
+  }
+
+  /**
+   * Create simple snowfall particle effect
+   */
+  private createSnowfallEffect() {
+    // Create a simple snow particle texture using graphics
+    if (!this.textures.exists('snowflake')) {
+      const graphics = this.add.graphics();
+      graphics.fillStyle(0xffffff, 0.8);
+      graphics.fillCircle(4, 4, 4);
+      graphics.generateTexture('snowflake', 8, 8);
+      graphics.destroy();
+    }
+
+    // Create particle emitter
+    const particles = this.add.particles(0, -10, 'snowflake', {
+      x: { min: 0, max: 800 },
+      y: -10,
+      lifespan: 6000,
+      speedY: { min: 20, max: 50 },
+      speedX: { min: -10, max: 10 },
+      scale: { start: 0.5, end: 0.2 },
+      alpha: { start: 0.8, end: 0 },
+      frequency: 100,
+      quantity: 1,
+    });
+    particles.setDepth(-10);
+  }
+
+  /**
+   * Create background using procedural Phaser graphics (fallback when no theme assets)
+   */
+  private createProceduralBackground() {
     // Sky gradient (light blue to darker blue)
     const skyGradient = this.add.graphics();
     skyGradient.fillGradientStyle(0x87CEEB, 0x87CEEB, 0x5BA3C6, 0x5BA3C6, 1);
@@ -412,6 +541,9 @@ export class LobbyScene extends Phaser.Scene {
         } else if (result.action === 'launch-game') {
           // Show game selector overlay
           this.showGameSelector();
+        } else if (result.action === 'under-construction') {
+          // Show "coming soon" message
+          this.showConstructionMessage(result.message || 'Coming soon!', result.label);
         }
       }
     });
@@ -798,6 +930,50 @@ export class LobbyScene extends Phaser.Scene {
     if (this.gameSelectOverlay) {
       this.gameSelectOverlay.destroy();
       this.gameSelectOverlay = undefined;
+    }
+  }
+
+  private showConstructionMessage(message: string, label?: string) {
+    // Hide any existing construction message
+    this.hideConstructionMessage();
+
+    this.constructionOverlay = this.add.container(400, 300);
+    this.constructionOverlay.setDepth(1000);
+
+    // Semi-transparent background
+    const bg = this.add.rectangle(0, 0, 350, 150, 0x000000, 0.85);
+    bg.setStrokeStyle(3, 0xfbbf24);
+    this.constructionOverlay.add(bg);
+
+    // Construction icon
+    const icon = this.add.text(0, -35, '🚧', {
+      fontSize: '48px',
+    }).setOrigin(0.5);
+    this.constructionOverlay.add(icon);
+
+    // Message text
+    const text = this.add.text(0, 25, message, {
+      fontSize: '18px',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 300 },
+    }).setOrigin(0.5);
+    this.constructionOverlay.add(text);
+
+    // Auto-hide after 2 seconds
+    this.time.delayedCall(2000, () => {
+      this.hideConstructionMessage();
+    });
+
+    // Also allow tap to dismiss
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => this.hideConstructionMessage());
+  }
+
+  private hideConstructionMessage() {
+    if (this.constructionOverlay) {
+      this.constructionOverlay.destroy();
+      this.constructionOverlay = undefined;
     }
   }
 

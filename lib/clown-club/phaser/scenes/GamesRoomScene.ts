@@ -42,6 +42,7 @@ export class GamesRoomScene extends Phaser.Scene {
   private boundSocketListeners: Map<string, (...args: unknown[]) => void> = new Map();
   private waitingOverlay?: Phaser.GameObjects.Container;
   private waitingText?: Phaser.GameObjects.Text;
+  private constructionOverlay?: Phaser.GameObjects.Container;
   private lastMoveTime: number = 0;
   private static readonly MOVE_THROTTLE_MS = 100;
 
@@ -77,6 +78,7 @@ export class GamesRoomScene extends Phaser.Scene {
   private cleanup() {
     this.cleanupSocketListeners();
     this.hideWaitingOverlay();
+    this.hideConstructionMessage();
   }
 
   private createBackground() {
@@ -197,6 +199,9 @@ export class GamesRoomScene extends Phaser.Scene {
         } else if (result.action === 'launch-game' && result.gameType) {
           // Direct join queue for the specific game
           this.socket.emit('game:join-queue', { gameType: result.gameType });
+        } else if (result.action === 'under-construction') {
+          // Show "coming soon" message
+          this.showConstructionMessage(result.message || 'Coming soon!', result.label);
         }
       }
     });
@@ -432,6 +437,50 @@ export class GamesRoomScene extends Phaser.Scene {
       this.waitingOverlay.destroy();
       this.waitingOverlay = undefined;
       this.waitingText = undefined;
+    }
+  }
+
+  private showConstructionMessage(message: string, label?: string) {
+    // Hide any existing construction message
+    this.hideConstructionMessage();
+
+    this.constructionOverlay = this.add.container(400, 300);
+    this.constructionOverlay.setDepth(1000);
+
+    // Semi-transparent background with neon arcade styling
+    const bg = this.add.rectangle(0, 0, 350, 150, 0x1a1a2e, 0.95);
+    bg.setStrokeStyle(3, 0xff00ff);
+    this.constructionOverlay.add(bg);
+
+    // Construction icon
+    const icon = this.add.text(0, -35, '🚧', {
+      fontSize: '48px',
+    }).setOrigin(0.5);
+    this.constructionOverlay.add(icon);
+
+    // Message text
+    const text = this.add.text(0, 25, message, {
+      fontSize: '18px',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 300 },
+    }).setOrigin(0.5);
+    this.constructionOverlay.add(text);
+
+    // Auto-hide after 2 seconds
+    this.time.delayedCall(2000, () => {
+      this.hideConstructionMessage();
+    });
+
+    // Also allow tap to dismiss
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => this.hideConstructionMessage());
+  }
+
+  private hideConstructionMessage() {
+    if (this.constructionOverlay) {
+      this.constructionOverlay.destroy();
+      this.constructionOverlay = undefined;
     }
   }
 

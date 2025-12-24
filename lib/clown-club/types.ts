@@ -27,10 +27,11 @@ export interface GameEndedData {
 export interface InteractionResult {
   objectId: string;
   success: boolean;
-  action?: 'zone-change' | 'launch-game' | 'none';
+  action?: 'zone-change' | 'launch-game' | 'under-construction' | 'none';
   targetZone?: string;
   gameType?: string;
   label?: string;
+  message?: string;
   availableGames?: GameInfo[];
 }
 

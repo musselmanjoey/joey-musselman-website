@@ -1,12 +1,17 @@
 import * as Phaser from 'phaser';
 import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS, TUTORIAL_DIRECTION_ROWS } from '../assets/AssetRegistry';
+import { loadThemeConfig, getActiveTheme, preloadThemeAssets, Theme, ThemeConfig } from '../ThemeLoader';
 
 export class BootScene extends Phaser.Scene {
+  private themeConfig: ThemeConfig | null = null;
+  private activeTheme: Theme | null = null;
+  private themeAssetsLoaded = false;
+
   constructor() {
     super('BootScene');
   }
 
-  preload() {
+  async preload() {
     // Show loading text
     const loadingText = this.add.text(
       this.cameras.main.width / 2,
@@ -23,9 +28,28 @@ export class BootScene extends Phaser.Scene {
         frameHeight: config.frameHeight,
       });
     });
+
+    // Try to load theme config and assets
+    try {
+      this.themeConfig = await loadThemeConfig();
+      this.activeTheme = getActiveTheme(this.themeConfig);
+
+      // Only preload theme assets if they have paths (not procedural fallback)
+      if (this.activeTheme.layers.sky) {
+        preloadThemeAssets(this, this.activeTheme);
+        this.themeAssetsLoaded = true;
+      }
+    } catch (error) {
+      console.warn('Theme loading failed, using procedural fallback:', error);
+    }
   }
 
   create() {
+    // Store theme info in registry for other scenes to access
+    this.registry.set('themeConfig', this.themeConfig);
+    this.registry.set('activeTheme', this.activeTheme);
+    this.registry.set('themeAssetsLoaded', this.themeAssetsLoaded);
+
     // Create animations for each character spritesheet
     this.createCharacterAnimations();
 

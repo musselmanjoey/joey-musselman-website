@@ -1,0 +1,116 @@
+{
+  "activeTheme": "default",
+  "themes": {
+    "default": {
+      "name": "Snowy Town",
+      "lobby": {
+        "layers": {
+          "sky": "default/lobby/sky.png",
+          "horizon": "default/lobby/horizon.png",
+          "ground": "default/lobby/ground.png"
+        },
+        "buildings": {
+          "left": {
+            "sprite": "default/lobby/building-cafe.png",
+            "x": 120,
+            "y": 280,
+            "label": "Cafe",
+            "emoji": "☕"
+          },
+          "center": {
+            "sprite": "default/lobby/building-records.png",
+            "x": 400,
+            "y": 260,
+            "label": "Records",
+            "emoji": "🎵"
+          },
+          "right": {
+            "sprite": "default/lobby/building-arcade.png",
+            "x": 680,
+            "y": 280,
+            "label": "Arcade",
+            "emoji": "🕹️"
+          }
+        },
+        "props": [
+          { "type": "info-stand", "sprite": "default/lobby/prop-info-stand.png", "x": 400, "y": 420 },
+          { "type": "bench", "sprite": "default/lobby/prop-bench.png", "x": 150, "y": 420 },
+          { "type": "bench", "sprite": "default/lobby/prop-bench.png", "x": 650, "y": 420 },
+          { "type": "tree", "sprite": "default/lobby/prop-tree.png", "x": 50, "y": 350 },
+          { "type": "tree", "sprite": "default/lobby/prop-tree.png", "x": 750, "y": 360 },
+          { "type": "lamp", "sprite": "default/lobby/prop-lamp.png", "x": 250, "y": 380 },
+          { "type": "lamp", "sprite": "default/lobby/prop-lamp.png", "x": 550, "y": 380 }
+        ],
+        "effects": {
+          "snowfall": true,
+          "lighting": "day"
+        }
+      },
+      "arcade": {
+        "layers": {
+          "background": "default/arcade/background.png"
+        },
+        "header": {
+          "sprite": "default/arcade/neon-sign.png",
+          "x": 400,
+          "y": 50
+        },
+        "cabinets": [
+          {
+            "id": "caption-contest",
+            "sprite": "default/arcade/cabinet-caption.png",
+            "placard": "default/arcade/placard.png",
+            "x": 150,
+            "y": 180,
+            "label": "Caption Contest",
+            "emoji": "📸",
+            "gameType": "caption-contest"
+          },
+          {
+            "id": "board-rush",
+            "sprite": "default/arcade/cabinet-board.png",
+            "placard": "default/arcade/placard.png",
+            "x": 300,
+            "y": 180,
+            "label": "Board Rush",
+            "emoji": "🎲",
+            "gameType": "board-game"
+          },
+          {
+            "id": "about-you",
+            "sprite": "default/arcade/cabinet-about.png",
+            "placard": "default/arcade/placard.png",
+            "x": 500,
+            "y": 180,
+            "label": "About You",
+            "emoji": "💭",
+            "gameType": "about-you"
+          },
+          {
+            "id": "newly-webs",
+            "sprite": "default/arcade/cabinet-newlywebs.png",
+            "placard": "default/arcade/placard.png",
+            "x": 650,
+            "y": 180,
+            "label": "Newly Webs",
+            "emoji": "🕸️",
+            "gameType": "newly-webs"
+          }
+        ],
+        "props": [
+          { "type": "lava-lamp", "sprite": "default/arcade/prop-lava-lamp.png", "x": 80, "y": 350 },
+          { "type": "lava-lamp", "sprite": "default/arcade/prop-lava-lamp.png", "x": 400, "y": 450 },
+          { "type": "bean-bag", "sprite": "default/arcade/prop-bean-bag.png", "x": 250, "y": 400 },
+          { "type": "bean-bag", "sprite": "default/arcade/prop-bean-bag.png", "x": 550, "y": 420 },
+          { "type": "bean-bag", "sprite": "default/arcade/prop-bean-bag.png", "x": 680, "y": 380 },
+          { "type": "stats-panel", "sprite": "default/arcade/prop-stats-panel.png", "x": 720, "y": 450 },
+          { "type": "exit-door", "sprite": "default/arcade/prop-exit-door.png", "x": 80, "y": 520 }
+        ],
+        "effects": {
+          "neonGlow": true,
+          "lighting": "dark"
+        }
+      }
+    }
+  }
+}
