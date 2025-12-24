@@ -49,6 +49,36 @@ export const DIRECTION_4_TO_8 = {
   right: DIRECTIONS.east,    // column 6
 } as const;
 
+// Clown color variants
+export const CLOWN_COLORS = [
+  { id: 'white', name: 'White', hex: '#FFFFFF' },
+  { id: 'garnet', name: 'Garnet', hex: '#800020' },
+  { id: 'blue', name: 'Blue', hex: '#6495ED' },
+  { id: 'pink', name: 'Pink', hex: '#FFB6C1' },
+  { id: 'green', name: 'Green', hex: '#90EE90' },
+  { id: 'yellow', name: 'Yellow', hex: '#FFFF96' },
+  { id: 'purple', name: 'Purple', hex: '#BA87CE' },
+  { id: 'orange', name: 'Orange', hex: '#FFC864' },
+] as const;
+
+export type ClownColor = typeof CLOWN_COLORS[number]['id'];
+
+// Helper to generate clown sprite configs for all colors
+function generateClownSpriteConfigs(): Record<string, SpriteConfig> {
+  const configs: Record<string, SpriteConfig> = {};
+  for (const color of CLOWN_COLORS) {
+    configs[`clown-${color.id}`] = {
+      key: `clown-${color.id}`,
+      path: `/assets/characters/clown-${color.id}.png`,
+      frameWidth: 256,
+      frameHeight: 256,
+      columns: 3,
+      rows: 4,
+    };
+  }
+  return configs;
+}
+
 // Sprite configurations for loading
 export const spriteConfigs: Record<string, SpriteConfig> = {
   'penguin-blue': {
@@ -59,19 +89,12 @@ export const spriteConfigs: Record<string, SpriteConfig> = {
     columns: 8,
     rows: 3,
   },
-  'clown-white': {
-    key: 'clown-white',
-    path: '/assets/characters/clown-white.png',
-    frameWidth: 256,
-    frameHeight: 256,
-    columns: 4,
-    rows: 4,
-  },
+  // Legacy clown spritesheet
   'clown-spritesheet': {
     key: 'clown-spritesheet',
     path: '/assets/characters/clown-spritesheet.png',
-    frameWidth: 64,
-    frameHeight: 64,
+    frameWidth: 256,
+    frameHeight: 256,
     columns: 3,
     rows: 4,
   },
@@ -83,6 +106,8 @@ export const spriteConfigs: Record<string, SpriteConfig> = {
     columns: 3,
     rows: 4,
   },
+  // All clown color variants
+  ...generateClownSpriteConfigs(),
 };
 
 // Direction to row mapping for clown sprites (rows = directions)

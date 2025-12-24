@@ -48,7 +48,7 @@ export default function WorldPage() {
   useEffect(() => {
     // Get player info from session storage
     const storedName = sessionStorage.getItem('playerName');
-    const storedEmoji = sessionStorage.getItem('playerEmoji') || '🤡';
+    const storedColor = sessionStorage.getItem('playerColor') || 'white';
     const storedVIP = sessionStorage.getItem('isVIP') === 'true';
 
     if (!storedName) {
@@ -59,6 +59,9 @@ export default function WorldPage() {
 
     setPlayerName(storedName);
 
+    // Convert color to sprite key (e.g., 'white' -> 'clown-white')
+    const spriteKey = `clown-${storedColor}`;
+
     // Connect socket
     const s = connectSocket();
     setSocket(s);
@@ -67,11 +70,11 @@ export default function WorldPage() {
     const handleConnected = () => {
       setPlayerId(s.id || '');
       setIsConnected(true);
-      // Join/rejoin the room with emoji and VIP status
+      // Join/rejoin the room with sprite key and VIP status
       s.emit('cc:join-room', {
         roomCode: roomCode.toUpperCase(),
         playerName: storedName,
-        character: storedEmoji,
+        character: spriteKey,
         isVIP: storedVIP,
       });
     };

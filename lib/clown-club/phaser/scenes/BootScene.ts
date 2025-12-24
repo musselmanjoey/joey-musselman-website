@@ -65,14 +65,11 @@ export class BootScene extends Phaser.Scene {
       const { key, columns } = config;
 
       // Determine which direction mapping to use based on sprite type
-      if (key === 'clown-spritesheet') {
-        // New clown spritesheet: 3 columns, walk cycle varies by direction
+      if (key === 'clown-spritesheet' || (key.startsWith('clown-') && key !== 'clown-white-old')) {
+        // Clown spritesheets (all color variants): 3 columns, walk cycle varies by direction
         // Front/back rows: [idle, walk, walk-flip] → cycle [0, 1, 0, 2]
         // Side rows: [idle, walk, idle] → cycle [0, 1, 0, 1]
         this.createClownSpritesheetAnimations(key, columns);
-      } else if (key.startsWith('clown')) {
-        // Old clown sprites: rows are directions, columns are walk cycle frames
-        this.createRowBasedAnimations(key, columns, CLOWN_DIRECTION_ROWS);
       } else if (key === 'green-cap') {
         // Tutorial-style sprites: rows are directions (down, up, left, right), columns are walk cycle frames
         // Use walk cycle pattern [0, 1, 0, 2] like the tutorial

@@ -28,11 +28,19 @@ export class Player extends Phaser.GameObjects.Container {
   ) {
     super(scene, x, y);
 
-    // Look up sprite key from character type (e.g., 'penguin' -> 'penguin-blue')
-    const charConfig = Object.entries(characters).find(
-      ([, config]) => config.emoji === character
-    );
-    this.spriteKey = charConfig?.[1].spriteKey || null;
+    // Character can be either:
+    // - A sprite key directly (e.g., 'clown-white', 'clown-blue')
+    // - An emoji for legacy support (e.g., '🤡')
+    if (character.startsWith('clown-') || character === 'penguin-blue' || character === 'green-cap') {
+      // Direct sprite key
+      this.spriteKey = character;
+    } else {
+      // Legacy: look up sprite key from emoji
+      const charConfig = Object.entries(characters).find(
+        ([, config]) => config.emoji === character
+      );
+      this.spriteKey = charConfig?.[1].spriteKey || null;
+    }
 
     // Crown for VIP players (above character) - positioned after we know sprite size
     if (isVIP) {
@@ -49,10 +57,8 @@ export class Player extends Phaser.GameObjects.Container {
       this.sprite = scene.add.sprite(0, 0, this.spriteKey);
       this.sprite.setOrigin(0.5, 0.5);
       // Scale sprites to reasonable display size
-      if (this.spriteKey === 'clown-spritesheet') {
-        this.sprite.setScale(1.5); // 64 * 1.5 = 96px
-      } else if (this.spriteKey === 'clown-white') {
-        this.sprite.setScale(0.25); // 256 * 0.25 = 64px (old spritesheet)
+      if (this.spriteKey?.startsWith('clown-')) {
+        this.sprite.setScale(0.4); // 256 * 0.4 = ~100px (all clown color variants)
       } else if (this.spriteKey === 'green-cap') {
         this.sprite.setScale(3); // 18 * 3 = 54px
       }
@@ -66,16 +72,16 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     // Adjust crown position for larger sprites
-    if (this.crown && this.spriteKey === 'clown-spritesheet') {
-      this.crown.setY(-55); // Above 96px sprite
+    if (this.crown && this.spriteKey?.startsWith('clown-')) {
+      this.crown.setY(-58); // Above ~100px sprite
     }
 
     // Name tag (positioned below sprite/emoji)
     // Adjust for scaled sprite size
     let nameTagY = 35;
     if (this.sprite) {
-      if (this.spriteKey === 'clown-spritesheet') {
-        nameTagY = 55; // 96px / 2 + some padding
+      if (this.spriteKey?.startsWith('clown-')) {
+        nameTagY = 58; // ~100px / 2 + some padding
       } else {
         nameTagY = 40;
       }
