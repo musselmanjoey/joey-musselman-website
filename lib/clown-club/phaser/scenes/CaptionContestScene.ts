@@ -22,6 +22,8 @@ interface PhaseData {
   votesA?: number;
   votesB?: number;
   scores?: Array<{ name: string; score: number; roundScore?: number }>;
+  winner?: { name: string; score: number };
+  finalScores?: Array<{ name: string; score: number }>;
 }
 
 interface MatchupResultData {
@@ -314,11 +316,18 @@ export class CaptionContestScene extends Phaser.Scene {
       case 'round-summary':
         this.showRoundSummary(data);
         break;
+      case 'game-over':
+        this.showGameOver(data);
+        break;
     }
   }
 
   private hideAllContainers() {
     this.inputContainer.setVisible(false);
+    // DOM elements need explicit visibility control
+    if (this.captionInput) {
+      this.captionInput.setVisible(false);
+    }
     this.votingContainer.setVisible(false);
     this.resultContainer.setVisible(false);
     this.summaryContainer.setVisible(false);
@@ -392,11 +401,19 @@ export class CaptionContestScene extends Phaser.Scene {
 
     this.inputContainer.setVisible(true);
     this.submitButton.setVisible(true);
+    // DOM elements need explicit visibility control
+    if (this.captionInput) {
+      this.captionInput.setVisible(true);
+    }
     this.statusText.setText('Write a funny caption!');
   }
 
   private showSubmittedState() {
     this.inputContainer.setVisible(false);
+    // DOM elements need explicit visibility control
+    if (this.captionInput) {
+      this.captionInput.setVisible(false);
+    }
     this.statusText.setText('Caption submitted! Waiting for others...');
 
     // Show checkmark
@@ -631,6 +648,40 @@ export class CaptionContestScene extends Phaser.Scene {
 
     this.summaryContainer.setVisible(true);
     this.statusText.setText('Waiting for next round...');
+    this.timerText.setText('');
+  }
+
+  private showGameOver(data: PhaseData) {
+    this.summaryContainer.removeAll(true);
+
+    // Trophy
+    const trophy = this.add.text(0, -100, '🏆', {
+      fontSize: '64px',
+    }).setOrigin(0.5);
+
+    // Winner text
+    const winnerTitle = this.add.text(0, -30, 'GAME OVER!', {
+      fontSize: '32px',
+      color: '#fbbf24',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const winnerName = this.add.text(0, 20, `Winner: ${data.winner?.name || 'Nobody'}`, {
+      fontSize: '24px',
+      color: '#171717',
+    }).setOrigin(0.5);
+
+    // Your final score
+    const myFinalScore = data.finalScores?.find(s => s.name === this.playerName)?.score || this.myScore;
+    const yourScore = this.add.text(0, 70, `Your Score: ${myFinalScore}`, {
+      fontSize: '20px',
+      color: '#22c55e',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.summaryContainer.add([trophy, winnerTitle, winnerName, yourScore]);
+    this.summaryContainer.setVisible(true);
+    this.statusText.setText('Returning to lobby...');
     this.timerText.setText('');
   }
 

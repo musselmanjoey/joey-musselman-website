@@ -10,6 +10,7 @@ import { Socket } from 'socket.io-client';
 interface PhaseData {
   phase: string;
   round?: number;
+  totalRounds?: number;
   currentImage?: string;
   timer?: number;
   matchupIndex?: number;
@@ -22,6 +23,9 @@ interface PhaseData {
   votesA?: number;
   votesB?: number;
   scores?: Array<{ name: string; score: number; roundScore?: number }>;
+  isLastRound?: boolean;
+  winner?: { name: string; score: number };
+  finalScores?: Array<{ name: string; score: number }>;
 }
 
 interface MatchupResultData {
@@ -282,6 +286,9 @@ export class HostCaptionContestScene extends Phaser.Scene {
         break;
       case 'round-summary':
         this.showRoundSummary(data);
+        break;
+      case 'game-over':
+        this.showGameOver(data);
         break;
     }
   }
@@ -620,11 +627,84 @@ export class HostCaptionContestScene extends Phaser.Scene {
       });
     }
 
-    // Next round button
-    this.nextRoundButton = this.createButton(0, 280, 'NEXT ROUND →', () => {
+    // Next round / Finish button
+    const buttonText = data.isLastRound ? 'SEE RESULTS →' : 'NEXT ROUND →';
+    const buttonColor = data.isLastRound ? COLORS.gold : COLORS.success;
+    this.nextRoundButton = this.createButton(0, 280, buttonText, () => {
       this.socket.emit('cap:next-round', {});
-    }, COLORS.success, 220, 60, '24px');
+    }, buttonColor, 240, 60, '24px');
     this.summaryContainer.add(this.nextRoundButton);
+
+    this.summaryContainer.setVisible(true);
+    this.timerText.setText('');
+  }
+
+  private showGameOver(data: PhaseData) {
+    this.summaryContainer.removeAll(true);
+    this.playersPanel.setVisible(false);
+    this.scoreboardPanel.setVisible(false);
+
+    // Winner announcement
+    const trophy = this.add.text(0, -220, '🏆', {
+      fontSize: '80px',
+    }).setOrigin(0.5);
+
+    const winnerTitle = this.add.text(0, -130, 'WINNER!', {
+      fontSize: '56px',
+      color: '#fbbf24',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const winnerName = this.add.text(0, -60, data.winner?.name || 'Nobody', {
+      fontSize: '42px',
+      color: '#171717',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const winnerScore = this.add.text(0, -10, `${data.winner?.score || 0} points`, {
+      fontSize: '28px',
+      color: '#22c55e',
+    }).setOrigin(0.5);
+
+    this.summaryContainer.add([trophy, winnerTitle, winnerName, winnerScore]);
+
+    // Final leaderboard
+    if (data.finalScores) {
+      const leaderBg = this.add.rectangle(0, 150, 500, 220, COLORS.panel)
+        .setStrokeStyle(2, COLORS.border);
+      this.summaryContainer.add(leaderBg);
+
+      data.finalScores.slice(0, 4).forEach((entry, i) => {
+        const y = 70 + (i * 40);
+        const isFirst = i === 0;
+
+        const rank = this.add.text(-200, y, isFirst ? '👑' : `${i + 1}.`, {
+          fontSize: '22px',
+          color: isFirst ? '#fbbf24' : '#6b7280',
+        }).setOrigin(0, 0.5);
+
+        const name = this.add.text(-160, y, entry.name, {
+          fontSize: '22px',
+          color: isFirst ? '#fbbf24' : '#171717',
+          fontStyle: isFirst ? 'bold' : 'normal',
+        }).setOrigin(0, 0.5);
+
+        const score = this.add.text(180, y, entry.score.toString(), {
+          fontSize: '24px',
+          color: '#22c55e',
+          fontStyle: 'bold',
+        }).setOrigin(1, 0.5);
+
+        this.summaryContainer.add([rank, name, score]);
+      });
+    }
+
+    // Returning to lobby message
+    const returnText = this.add.text(0, 290, 'Returning to lobby...', {
+      fontSize: '20px',
+      color: '#6b7280',
+    }).setOrigin(0.5);
+    this.summaryContainer.add(returnText);
 
     this.summaryContainer.setVisible(true);
     this.timerText.setText('');
@@ -640,10 +720,13 @@ export class HostCaptionContestScene extends Phaser.Scene {
   }
 
   private updatePlayersPanel() {
-    // Clear existing player entries (keep title)
-    const title = this.playersPanel.getAt(0);
-    this.playersPanel.removeAll(true);
-    this.playersPanel.add(title);
+    // Clear existing player entries (keep title at index 0)
+    while (this.playersPanel.length > 1) {
+      const child = this.playersPanel.getAt(1);
+      if (child) {
+        this.playersPanel.remove(child, true);
+      }
+    }
 
     // Add player status
     this.submissions.forEach((sub, i) => {
@@ -661,10 +744,13 @@ export class HostCaptionContestScene extends Phaser.Scene {
   }
 
   private updateScoreboard() {
-    // Clear existing score entries (keep title)
-    const title = this.scoreboardPanel.getAt(0);
-    this.scoreboardPanel.removeAll(true);
-    this.scoreboardPanel.add(title);
+    // Clear existing score entries (keep title at index 0)
+    while (this.scoreboardPanel.length > 1) {
+      const child = this.scoreboardPanel.getAt(1);
+      if (child) {
+        this.scoreboardPanel.remove(child, true);
+      }
+    }
 
     // Add scores
     const sortedScores = [...this.scores].sort((a, b) => b.score - a.score);
