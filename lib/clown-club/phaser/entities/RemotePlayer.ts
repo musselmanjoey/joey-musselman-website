@@ -48,9 +48,11 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     if (this.spriteKey && scene.textures.exists(this.spriteKey)) {
       this.sprite = scene.add.sprite(0, 0, this.spriteKey);
       this.sprite.setOrigin(0.5, 0.5);
-      // Scale sprites to approximately 64px height
-      if (this.spriteKey.startsWith('clown')) {
-        this.sprite.setScale(0.25); // 256 * 0.25 = 64px
+      // Scale sprites to reasonable display size
+      if (this.spriteKey === 'clown-spritesheet') {
+        this.sprite.setScale(1.5); // 64 * 1.5 = 96px
+      } else if (this.spriteKey === 'clown-white') {
+        this.sprite.setScale(0.25); // 256 * 0.25 = 64px (old spritesheet)
       } else if (this.spriteKey === 'green-cap') {
         this.sprite.setScale(3); // 18 * 3 = 54px
       }
@@ -63,8 +65,20 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
       this.emoji.setOrigin(0.5);
     }
 
+    // Adjust crown position for larger sprites
+    if (this.crown && this.spriteKey === 'clown-spritesheet') {
+      this.crown.setY(-55);
+    }
+
     // Name tag
-    const nameTagY = this.sprite ? 40 : 35;
+    let nameTagY = 35;
+    if (this.sprite) {
+      if (this.spriteKey === 'clown-spritesheet') {
+        nameTagY = 55;
+      } else {
+        nameTagY = 40;
+      }
+    }
     this.nameTag = scene.add.text(0, nameTagY, name, {
       fontSize: '14px',
       color: '#ffffff',

@@ -67,6 +67,14 @@ export const spriteConfigs: Record<string, SpriteConfig> = {
     columns: 4,
     rows: 4,
   },
+  'clown-spritesheet': {
+    key: 'clown-spritesheet',
+    path: '/assets/characters/clown-spritesheet.png',
+    frameWidth: 64,
+    frameHeight: 64,
+    columns: 3,
+    rows: 4,
+  },
   'green-cap': {
     key: 'green-cap',
     path: '/assets/characters/green-cap.png',
@@ -94,7 +102,7 @@ export const TUTORIAL_DIRECTION_ROWS: Record<string, number> = {
 };
 
 export const characters: Record<string, CharacterAsset> = {
-  clown: { emoji: '🤡', spriteKey: 'clown-white', name: 'Clown' },
+  clown: { emoji: '🤡', spriteKey: 'clown-spritesheet', name: 'Clown' },
   penguin: { emoji: '🐧', spriteKey: 'penguin-blue', name: 'Penguin' },
   bear: { emoji: '🐻', spriteKey: null, name: 'Bear' },
   fox: { emoji: '🦊', spriteKey: null, name: 'Fox' },

@@ -65,8 +65,13 @@ export class BootScene extends Phaser.Scene {
       const { key, columns } = config;
 
       // Determine which direction mapping to use based on sprite type
-      if (key.startsWith('clown')) {
-        // Clown sprites: rows are directions (down, right, left, up), columns are walk cycle frames
+      if (key === 'clown-spritesheet') {
+        // New clown spritesheet: 3 columns, walk cycle varies by direction
+        // Front/back rows: [idle, walk, walk-flip] → cycle [0, 1, 0, 2]
+        // Side rows: [idle, walk, idle] → cycle [0, 1, 0, 1]
+        this.createClownSpritesheetAnimations(key, columns);
+      } else if (key.startsWith('clown')) {
+        // Old clown sprites: rows are directions, columns are walk cycle frames
         this.createRowBasedAnimations(key, columns, CLOWN_DIRECTION_ROWS);
       } else if (key === 'green-cap') {
         // Tutorial-style sprites: rows are directions (down, up, left, right), columns are walk cycle frames
@@ -88,6 +93,46 @@ export class BootScene extends Phaser.Scene {
           });
         });
       }
+    });
+  }
+
+  private createClownSpritesheetAnimations(key: string, columns: number) {
+    // Layout: 3 cols x 4 rows
+    // Row 0 (down):  idle[0], walk[1], walk-flip[2]
+    // Row 1 (right): idle[0], walk[1], idle[2]
+    // Row 2 (left):  idle[0], walk[1], idle[2]
+    // Row 3 (up):    idle[0], walk[1], walk-flip[2]
+
+    const directions = ['down', 'right', 'left', 'up'];
+
+    directions.forEach((dir, rowIndex) => {
+      const startFrame = rowIndex * columns;
+
+      // Idle animation (first frame)
+      this.anims.create({
+        key: `${key}-idle-${dir}`,
+        frames: [{ key, frame: startFrame }],
+        frameRate: 1,
+      });
+
+      // Walk animation - different cycle for front/back vs sides
+      let walkCycle: number[];
+      if (dir === 'down' || dir === 'up') {
+        // Front/back: idle → walk → idle → walk-flip
+        walkCycle = [0, 1, 0, 2];
+      } else {
+        // Sides: idle → walk → idle → walk (repeat pattern)
+        walkCycle = [0, 1, 0, 1];
+      }
+
+      const walkFrames = walkCycle.map(offset => ({ key, frame: startFrame + offset }));
+
+      this.anims.create({
+        key: `${key}-walk-${dir}`,
+        frames: walkFrames,
+        frameRate: 8,
+        repeat: -1,
+      });
     });
   }
 
