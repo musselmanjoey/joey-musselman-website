@@ -46,3 +46,7 @@ scrapedVideos/
 *.mp4
 *.webp
 *.info.json
+
+# Generated sprite files (intermediate build artifacts)
+*-clean.png
+/screenshots/
