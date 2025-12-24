@@ -1,10 +1,10 @@
 import * as Phaser from 'phaser';
 import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS, TUTORIAL_DIRECTION_ROWS } from '../assets/AssetRegistry';
-import { loadThemeConfig, getActiveTheme, preloadThemeAssets, Theme, ThemeConfig } from '../ThemeLoader';
+import { loadThemeConfig, getLobbyTheme, preloadLobbyThemeAssets, LobbyTheme, ThemeConfig } from '../ThemeLoader';
 
 export class BootScene extends Phaser.Scene {
   private themeConfig: ThemeConfig | null = null;
-  private activeTheme: Theme | null = null;
+  private lobbyTheme: LobbyTheme | null = null;
   private themeAssetsLoaded = false;
 
   constructor() {
@@ -32,11 +32,14 @@ export class BootScene extends Phaser.Scene {
     // Try to load theme config and assets
     try {
       this.themeConfig = await loadThemeConfig();
-      this.activeTheme = getActiveTheme(this.themeConfig);
+      this.lobbyTheme = getLobbyTheme(this.themeConfig);
 
       // Only preload theme assets if they have paths (not procedural fallback)
-      if (this.activeTheme.layers.sky) {
-        preloadThemeAssets(this, this.activeTheme);
+      const hasUnifiedBg = this.lobbyTheme.mode === 'unified' && this.lobbyTheme.background;
+      const hasLayeredBg = this.lobbyTheme.layers?.sky;
+
+      if (hasUnifiedBg || hasLayeredBg) {
+        preloadLobbyThemeAssets(this, this.lobbyTheme);
         this.themeAssetsLoaded = true;
       }
     } catch (error) {
@@ -47,7 +50,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     // Store theme info in registry for other scenes to access
     this.registry.set('themeConfig', this.themeConfig);
-    this.registry.set('activeTheme', this.activeTheme);
+    this.registry.set('lobbyTheme', this.lobbyTheme);
     this.registry.set('themeAssetsLoaded', this.themeAssetsLoaded);
 
     // Create animations for each character spritesheet

@@ -5,7 +5,7 @@ import { RemotePlayer } from '../entities/RemotePlayer';
 import { InteractiveObject } from '../entities/InteractiveObject';
 import { GameInfo, InteractionResult, GameStartedData } from '../../types';
 import { gameEvents } from '../../gameEvents';
-import { Theme, THEME_ASSET_KEYS } from '../ThemeLoader';
+import { LobbyTheme, THEME_ASSET_KEYS } from '../ThemeLoader';
 
 interface PlayerData {
   id: string;
@@ -44,8 +44,10 @@ export class LobbyScene extends Phaser.Scene {
   private waitingDotsTimer?: Phaser.Time.TimerEvent;
   private lastMoveTime: number = 0;
   private static readonly MOVE_THROTTLE_MS = 100;
-  private activeTheme?: Theme;
+  private lobbyTheme?: LobbyTheme;
   private themeAssetsLoaded = false;
+  private debugCoordText?: Phaser.GameObjects.Text;
+  private static readonly DEBUG_MODE = false; // Set to true to enable coordinate display
 
   constructor() {
     super('LobbyScene');
@@ -57,11 +59,11 @@ export class LobbyScene extends Phaser.Scene {
     this.playerId = this.registry.get('playerId');
 
     // Get theme info from registry
-    this.activeTheme = this.registry.get('activeTheme');
+    this.lobbyTheme = this.registry.get('lobbyTheme');
     this.themeAssetsLoaded = this.registry.get('themeAssetsLoaded') || false;
 
     // Create background (themed if assets loaded, otherwise procedural)
-    if (this.themeAssetsLoaded && this.activeTheme) {
+    if (this.themeAssetsLoaded && this.lobbyTheme) {
       this.createThemedBackground();
     } else {
       this.createProceduralBackground();
@@ -82,6 +84,17 @@ export class LobbyScene extends Phaser.Scene {
 
     // Fade in (handles both initial load and returning from other zones)
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    // Debug mode: show coordinate text
+    if (LobbyScene.DEBUG_MODE) {
+      this.debugCoordText = this.add.text(10, 560, 'Click to see coordinates', {
+        fontSize: '14px',
+        color: '#ffffff',
+        backgroundColor: '#000000aa',
+        padding: { x: 8, y: 4 },
+      });
+      this.debugCoordText.setDepth(1000);
+    }
   }
 
   private cleanup() {
@@ -95,73 +108,84 @@ export class LobbyScene extends Phaser.Scene {
    * Create background from loaded theme assets (images)
    */
   private createThemedBackground() {
-    if (!this.activeTheme) return;
+    if (!this.lobbyTheme) return;
 
     const width = 800;
     const height = 600;
 
-    // Sky layer (full background)
-    if (this.textures.exists(THEME_ASSET_KEYS.SKY)) {
-      const sky = this.add.image(width / 2, 200, THEME_ASSET_KEYS.SKY);
-      sky.setDisplaySize(width, 400);
-      sky.setDepth(-100);
+    // Check for unified background mode
+    if (this.lobbyTheme.mode === 'unified' && this.textures.exists(THEME_ASSET_KEYS.BACKGROUND)) {
+      // Single unified background image
+      const bg = this.add.image(width / 2, height / 2, THEME_ASSET_KEYS.BACKGROUND);
+      bg.setDisplaySize(width, height);
+      bg.setDepth(-100);
+    } else {
+      // Layered mode - separate layers
+      // Sky layer (full background)
+      if (this.textures.exists(THEME_ASSET_KEYS.SKY)) {
+        const sky = this.add.image(width / 2, 200, THEME_ASSET_KEYS.SKY);
+        sky.setDisplaySize(width, 400);
+        sky.setDepth(-100);
+      }
+
+      // Horizon layer (mountains/distant scenery)
+      if (this.textures.exists(THEME_ASSET_KEYS.HORIZON)) {
+        const horizon = this.add.image(width / 2, 300, THEME_ASSET_KEYS.HORIZON);
+        horizon.setDisplaySize(width, 200);
+        horizon.setDepth(-90);
+      }
+
+      // Ground layer
+      if (this.textures.exists(THEME_ASSET_KEYS.GROUND)) {
+        const ground = this.add.image(width / 2, 450, THEME_ASSET_KEYS.GROUND);
+        ground.setDisplaySize(width, 300);
+        ground.setDepth(-80);
+      }
+
+      // Buildings (only in layered mode)
+      if (this.lobbyTheme.buildings) {
+        const buildings = this.lobbyTheme.buildings;
+
+        if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_LEFT)) {
+          const left = this.add.image(buildings.left.x, buildings.left.y, THEME_ASSET_KEYS.BUILDING_LEFT);
+          left.setOrigin(0.5, 1);
+          left.setDepth(-50);
+          this.add.text(buildings.left.x, buildings.left.y + 10, buildings.left.label, {
+            fontSize: '12px',
+            color: '#ffffff',
+            backgroundColor: '#00000080',
+            padding: { x: 6, y: 2 },
+          }).setOrigin(0.5).setDepth(-49);
+        }
+
+        if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_CENTER)) {
+          const center = this.add.image(buildings.center.x, buildings.center.y, THEME_ASSET_KEYS.BUILDING_CENTER);
+          center.setOrigin(0.5, 1);
+          center.setDepth(-50);
+          this.add.text(buildings.center.x, buildings.center.y + 10, buildings.center.label, {
+            fontSize: '12px',
+            color: '#ffffff',
+            backgroundColor: '#00000080',
+            padding: { x: 6, y: 2 },
+          }).setOrigin(0.5).setDepth(-49);
+        }
+
+        if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_RIGHT)) {
+          const right = this.add.image(buildings.right.x, buildings.right.y, THEME_ASSET_KEYS.BUILDING_RIGHT);
+          right.setOrigin(0.5, 1);
+          right.setDepth(-50);
+          this.add.text(buildings.right.x, buildings.right.y + 10, buildings.right.label, {
+            fontSize: '12px',
+            color: '#ffffff',
+            backgroundColor: '#00000080',
+            padding: { x: 6, y: 2 },
+          }).setOrigin(0.5).setDepth(-49);
+        }
+      }
     }
 
-    // Horizon layer (mountains/distant scenery)
-    if (this.textures.exists(THEME_ASSET_KEYS.HORIZON)) {
-      const horizon = this.add.image(width / 2, 300, THEME_ASSET_KEYS.HORIZON);
-      horizon.setDisplaySize(width, 200);
-      horizon.setDepth(-90);
-    }
-
-    // Ground layer
-    if (this.textures.exists(THEME_ASSET_KEYS.GROUND)) {
-      const ground = this.add.image(width / 2, 450, THEME_ASSET_KEYS.GROUND);
-      ground.setDisplaySize(width, 300);
-      ground.setDepth(-80);
-    }
-
-    // Buildings
-    const buildings = this.activeTheme.buildings;
-
-    if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_LEFT)) {
-      const left = this.add.image(buildings.left.x, buildings.left.y, THEME_ASSET_KEYS.BUILDING_LEFT);
-      left.setOrigin(0.5, 1);
-      left.setDepth(-50);
-      this.add.text(buildings.left.x, buildings.left.y + 10, buildings.left.label, {
-        fontSize: '12px',
-        color: '#ffffff',
-        backgroundColor: '#00000080',
-        padding: { x: 6, y: 2 },
-      }).setOrigin(0.5).setDepth(-49);
-    }
-
-    if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_CENTER)) {
-      const center = this.add.image(buildings.center.x, buildings.center.y, THEME_ASSET_KEYS.BUILDING_CENTER);
-      center.setOrigin(0.5, 1);
-      center.setDepth(-50);
-      this.add.text(buildings.center.x, buildings.center.y + 10, buildings.center.label, {
-        fontSize: '12px',
-        color: '#ffffff',
-        backgroundColor: '#00000080',
-        padding: { x: 6, y: 2 },
-      }).setOrigin(0.5).setDepth(-49);
-    }
-
-    if (this.textures.exists(THEME_ASSET_KEYS.BUILDING_RIGHT)) {
-      const right = this.add.image(buildings.right.x, buildings.right.y, THEME_ASSET_KEYS.BUILDING_RIGHT);
-      right.setOrigin(0.5, 1);
-      right.setDepth(-50);
-      this.add.text(buildings.right.x, buildings.right.y + 10, buildings.right.label, {
-        fontSize: '12px',
-        color: '#ffffff',
-        backgroundColor: '#00000080',
-        padding: { x: 6, y: 2 },
-      }).setOrigin(0.5).setDepth(-49);
-    }
-
-    // Props
-    this.activeTheme.props.forEach((prop, index) => {
+    // Props (both modes)
+    this.lobbyTheme.props.forEach((prop, index) => {
       const key = THEME_ASSET_KEYS.PROP_PREFIX + index;
       if (this.textures.exists(key)) {
         const propSprite = this.add.image(prop.x, prop.y, key);
@@ -171,7 +195,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // Add theme-based effects
-    if (this.activeTheme.effects?.snowfall) {
+    if (this.lobbyTheme.effects?.snowfall) {
       this.createSnowfallEffect();
     }
   }
@@ -720,6 +744,14 @@ export class LobbyScene extends Phaser.Scene {
   private setupInput() {
     // Tap to move / interact
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // Debug mode: show coordinates on click
+      if (LobbyScene.DEBUG_MODE && this.debugCoordText) {
+        const x = Math.round(pointer.x);
+        const y = Math.round(pointer.y);
+        this.debugCoordText.setText(`Clicked: x: ${x}, y: ${y}`);
+        console.log(`Clicked coordinates: x: ${x}, y: ${y}`);
+      }
+
       if (!this.localPlayer) return;
 
       // Check if tapping an interactive object

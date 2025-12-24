@@ -30,21 +30,29 @@ export interface ThemeColors {
   pathColor?: string;
 }
 
-export interface Theme {
-  name: string;
-  layers: {
+export interface LobbyTheme {
+  mode?: 'unified' | 'layered';
+  // Unified mode - single background image
+  background?: string;
+  // Layered mode - separate layers
+  layers?: {
     sky: string;
     horizon: string;
     ground: string;
   };
-  buildings: {
+  buildings?: {
     left: ThemeBuilding;
     center: ThemeBuilding;
     right: ThemeBuilding;
   };
   props: ThemeProp[];
   effects?: ThemeEffects;
-  colors?: ThemeColors;
+}
+
+export interface Theme {
+  name: string;
+  lobby: LobbyTheme;
+  arcade?: unknown; // For future use
 }
 
 export interface ThemeConfig {
@@ -54,6 +62,7 @@ export interface ThemeConfig {
 
 // Asset keys used in Phaser
 export const THEME_ASSET_KEYS = {
+  BACKGROUND: 'theme-background',
   SKY: 'theme-sky',
   HORIZON: 'theme-horizon',
   GROUND: 'theme-ground',
@@ -83,42 +92,63 @@ export function getActiveTheme(config: ThemeConfig): Theme {
 }
 
 /**
- * Check if theme assets exist (for graceful fallback)
+ * Get the lobby theme from the active theme
  */
-export async function checkThemeAssetsExist(theme: Theme): Promise<boolean> {
+export function getLobbyTheme(config: ThemeConfig): LobbyTheme {
+  const theme = getActiveTheme(config);
+  return theme.lobby;
+}
+
+/**
+ * Check if lobby theme assets exist (for graceful fallback)
+ */
+export async function checkLobbyAssetsExist(lobbyTheme: LobbyTheme): Promise<boolean> {
   try {
-    const skyResponse = await fetch(`/assets/themes/${theme.layers.sky}`, { method: 'HEAD' });
-    return skyResponse.ok;
+    // Check unified background or layered sky
+    const assetPath = lobbyTheme.background || lobbyTheme.layers?.sky;
+    if (!assetPath) return false;
+    const response = await fetch(`/assets/themes/${assetPath}`, { method: 'HEAD' });
+    return response.ok;
   } catch {
     return false;
   }
 }
 
 /**
- * Preload all theme assets in a Phaser scene
+ * Preload lobby theme assets in a Phaser scene
  */
-export function preloadThemeAssets(scene: Phaser.Scene, theme: Theme): void {
+export function preloadLobbyThemeAssets(scene: Phaser.Scene, lobbyTheme: LobbyTheme): void {
   const basePath = '/assets/themes/';
 
-  // Load layer images
-  scene.load.image(THEME_ASSET_KEYS.SKY, basePath + theme.layers.sky);
-  scene.load.image(THEME_ASSET_KEYS.HORIZON, basePath + theme.layers.horizon);
-  scene.load.image(THEME_ASSET_KEYS.GROUND, basePath + theme.layers.ground);
+  if (lobbyTheme.mode === 'unified' && lobbyTheme.background) {
+    // Unified mode - single background image
+    scene.load.image(THEME_ASSET_KEYS.BACKGROUND, basePath + lobbyTheme.background);
+  } else if (lobbyTheme.layers) {
+    // Layered mode - separate layers
+    scene.load.image(THEME_ASSET_KEYS.SKY, basePath + lobbyTheme.layers.sky);
+    scene.load.image(THEME_ASSET_KEYS.HORIZON, basePath + lobbyTheme.layers.horizon);
+    scene.load.image(THEME_ASSET_KEYS.GROUND, basePath + lobbyTheme.layers.ground);
 
-  // Load building sprites
-  scene.load.image(THEME_ASSET_KEYS.BUILDING_LEFT, basePath + theme.buildings.left.sprite);
-  scene.load.image(THEME_ASSET_KEYS.BUILDING_CENTER, basePath + theme.buildings.center.sprite);
-  scene.load.image(THEME_ASSET_KEYS.BUILDING_RIGHT, basePath + theme.buildings.right.sprite);
+    // Load building sprites
+    if (lobbyTheme.buildings) {
+      scene.load.image(THEME_ASSET_KEYS.BUILDING_LEFT, basePath + lobbyTheme.buildings.left.sprite);
+      scene.load.image(THEME_ASSET_KEYS.BUILDING_CENTER, basePath + lobbyTheme.buildings.center.sprite);
+      scene.load.image(THEME_ASSET_KEYS.BUILDING_RIGHT, basePath + lobbyTheme.buildings.right.sprite);
+    }
+  }
 
-  // Load prop sprites (deduplicate by sprite path)
+  // Load prop sprites (both modes)
   const loadedProps = new Set<string>();
-  theme.props.forEach((prop, index) => {
+  lobbyTheme.props.forEach((prop, index) => {
     if (!loadedProps.has(prop.sprite)) {
       scene.load.image(THEME_ASSET_KEYS.PROP_PREFIX + index, basePath + prop.sprite);
       loadedProps.add(prop.sprite);
     }
   });
 }
+
+// Legacy alias for backwards compatibility
+export const preloadThemeAssets = preloadLobbyThemeAssets;
 
 /**
  * Fallback config when theme-config.json doesn't exist or can't be loaded
@@ -130,14 +160,16 @@ function getFallbackConfig(): ThemeConfig {
     themes: {
       procedural: {
         name: 'Procedural (Fallback)',
-        layers: { sky: '', horizon: '', ground: '' },
-        buildings: {
-          left: { sprite: '', x: 80, y: 280, label: 'Cafe', emoji: '☕' },
-          center: { sprite: '', x: 400, y: 260, label: 'Shop', emoji: '🎁' },
-          right: { sprite: '', x: 700, y: 280, label: 'Club', emoji: '🎵' },
+        lobby: {
+          layers: { sky: '', horizon: '', ground: '' },
+          buildings: {
+            left: { sprite: '', x: 80, y: 280, label: 'Cafe', emoji: '☕' },
+            center: { sprite: '', x: 400, y: 260, label: 'Shop', emoji: '🎁' },
+            right: { sprite: '', x: 700, y: 280, label: 'Club', emoji: '🎵' },
+          },
+          props: [],
+          effects: { snowfall: true, lighting: 'day' },
         },
-        props: [],
-        effects: { snowfall: true, lighting: 'day' },
       },
     },
   };
