@@ -39,6 +39,9 @@ export class LobbyScene extends Phaser.Scene {
   private waitingOverlay?: Phaser.GameObjects.Container;
   private waitingText?: Phaser.GameObjects.Text;
   private gameSelectOverlay?: Phaser.GameObjects.Container;
+  private waitingDotsTimer?: Phaser.Time.TimerEvent;
+  private lastMoveTime: number = 0;
+  private static readonly MOVE_THROTTLE_MS = 100;
 
   constructor() {
     super('LobbyScene');
@@ -58,11 +61,21 @@ export class LobbyScene extends Phaser.Scene {
     // Setup input
     this.setupInput();
 
+    // Register cleanup on scene shutdown/sleep
+    this.events.once('shutdown', () => this.cleanup());
+    this.events.once('sleep', () => this.cleanup());
+
     // Request world state from server (scene is now ready to receive it)
     this.socket.emit('cc:request-state');
 
     // Fade in (handles both initial load and returning from other zones)
     this.cameras.main.fadeIn(500, 0, 0, 0);
+  }
+
+  private cleanup() {
+    this.cleanupSocketListeners();
+    this.hideWaitingOverlay();
+    this.hideGameSelector();
   }
 
   private createBackground() {
@@ -492,6 +505,36 @@ export class LobbyScene extends Phaser.Scene {
         remote?.showChatBubble(message);
       }
     });
+
+    // Handle socket disconnect - show reconnection message
+    addListener('disconnect', () => {
+      this.handleDisconnect();
+    });
+  }
+
+  private handleDisconnect() {
+    // Disable input while disconnected
+    this.input.enabled = false;
+
+    // Show disconnect overlay
+    const overlay = this.add.container(400, 300);
+    overlay.setDepth(2000);
+
+    const bg = this.add.rectangle(0, 0, 300, 100, 0x000000, 0.9);
+    const text = this.add.text(0, 0, 'Connection lost...\nReconnecting', {
+      fontSize: '20px',
+      color: '#ff6b6b',
+      align: 'center',
+    }).setOrigin(0.5);
+
+    overlay.add([bg, text]);
+
+    // Listen for reconnection
+    this.socket.once('connect', () => {
+      overlay.destroy();
+      this.input.enabled = true;
+      this.socket.emit('cc:request-state');
+    });
   }
 
   // Called when scene is paused or stopped
@@ -558,6 +601,15 @@ export class LobbyScene extends Phaser.Scene {
         this.socket.emit('cc:interact', { objectId: hitObject.objectId });
         hitObject.highlight();
       } else {
+        // Throttle movement updates to reduce network traffic
+        const now = Date.now();
+        if (now - this.lastMoveTime < LobbyScene.MOVE_THROTTLE_MS) {
+          // Still move locally for responsiveness, just don't emit
+          this.localPlayer.moveToPoint(pointer.x, pointer.y);
+          return;
+        }
+        this.lastMoveTime = now;
+
         // Move to tap position
         this.localPlayer.moveToPoint(pointer.x, pointer.y);
         this.socket.emit('cc:move', { x: pointer.x, y: pointer.y });
@@ -605,9 +657,9 @@ export class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.waitingOverlay.add(info);
 
-    // Dots animation
+    // Dots animation - store reference for cleanup
     let dots = 0;
-    this.time.addEvent({
+    this.waitingDotsTimer = this.time.addEvent({
       delay: 500,
       callback: () => {
         if (info.active) {
@@ -647,6 +699,11 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   private hideWaitingOverlay() {
+    // Clean up timer to prevent memory leak
+    if (this.waitingDotsTimer) {
+      this.waitingDotsTimer.destroy();
+      this.waitingDotsTimer = undefined;
+    }
     if (this.waitingOverlay) {
       this.waitingOverlay.destroy();
       this.waitingOverlay = undefined;

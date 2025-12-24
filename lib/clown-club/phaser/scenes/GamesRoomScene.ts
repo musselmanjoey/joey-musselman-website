@@ -42,6 +42,8 @@ export class GamesRoomScene extends Phaser.Scene {
   private boundSocketListeners: Map<string, (...args: unknown[]) => void> = new Map();
   private waitingOverlay?: Phaser.GameObjects.Container;
   private waitingText?: Phaser.GameObjects.Text;
+  private lastMoveTime: number = 0;
+  private static readonly MOVE_THROTTLE_MS = 100;
 
   constructor() {
     super('GamesRoomScene');
@@ -61,11 +63,20 @@ export class GamesRoomScene extends Phaser.Scene {
     // Setup input
     this.setupInput();
 
+    // Register cleanup on scene shutdown/sleep
+    this.events.once('shutdown', () => this.cleanup());
+    this.events.once('sleep', () => this.cleanup());
+
     // Request current zone state
     this.socket.emit('cc:request-state');
 
     // Fade in from black (coming from zone transition)
     this.cameras.main.fadeIn(500, 0, 0, 0);
+  }
+
+  private cleanup() {
+    this.cleanupSocketListeners();
+    this.hideWaitingOverlay();
   }
 
   private createBackground() {
@@ -232,6 +243,36 @@ export class GamesRoomScene extends Phaser.Scene {
         this.scene.launch('CaptionContestScene');
       }
     });
+
+    // Handle socket disconnect - show reconnection message
+    addListener('disconnect', () => {
+      this.handleDisconnect();
+    });
+  }
+
+  private handleDisconnect() {
+    // Disable input while disconnected
+    this.input.enabled = false;
+
+    // Show disconnect overlay
+    const overlay = this.add.container(400, 300);
+    overlay.setDepth(2000);
+
+    const bg = this.add.rectangle(0, 0, 300, 100, 0x000000, 0.9);
+    const text = this.add.text(0, 0, 'Connection lost...\nReconnecting', {
+      fontSize: '20px',
+      color: '#ff6b6b',
+      align: 'center',
+    }).setOrigin(0.5);
+
+    overlay.add([bg, text]);
+
+    // Listen for reconnection
+    this.socket.once('connect', () => {
+      overlay.destroy();
+      this.input.enabled = true;
+      this.socket.emit('cc:request-state');
+    });
   }
 
   private cleanupSocketListeners() {
@@ -255,6 +296,15 @@ export class GamesRoomScene extends Phaser.Scene {
         clickedObject.highlight();
         this.socket.emit('cc:interact', { objectId: clickedObject.objectId });
       } else {
+        // Throttle movement updates to reduce network traffic
+        const now = Date.now();
+        if (now - this.lastMoveTime < GamesRoomScene.MOVE_THROTTLE_MS) {
+          // Still move locally for responsiveness, just don't emit
+          this.localPlayer.moveToPoint(pointer.x, pointer.y);
+          return;
+        }
+        this.lastMoveTime = now;
+
         // Move player
         this.localPlayer.moveToPoint(pointer.x, pointer.y);
         this.socket.emit('cc:move', { x: pointer.x, y: pointer.y });
