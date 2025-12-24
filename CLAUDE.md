@@ -132,6 +132,20 @@ Club Penguin-style multi-room navigation with fade transitions:
 - `scenes/GamesRoomScene.ts` - Arcade room with game cabinets
 - `scenes/HostWorldScene.ts` - Host view with zone tabs, game queue overlay
 
+### Sprite Generation
+
+**See `SPRITE-GENERATION.md` for full guide on generating game assets with AI.**
+
+Key workflow:
+1. Generate with Gemini using solid `#00FF00` green background (Gemini can't do transparency)
+2. Remove background: `python scripts/remove-background.py input.png output.png`
+3. Resize with Sharp if needed
+4. Enable `DEBUG_MODE` in LobbyScene.ts to click-for-coordinates when positioning
+
+**Tools:**
+- `scripts/remove-background.py` - Background removal using rembg
+- `scripts/screenshot-lobby.ts` - Playwright automated screenshots for UI testing
+
 ### Character Sprite Animation (TODO)
 Currently using emoji placeholders. Next steps for Club Penguin-style animated sprites:
 
@@ -147,11 +161,12 @@ Currently using emoji placeholders. Next steps for Club Penguin-style animated s
 - Format: PNG spritesheet or individual frames
 
 **To implement animated walk:**
-1. Generate spritesheets (e.g., via Gemini/AI image gen)
-2. Place in `public/assets/characters/`
-3. Load in BootScene with `this.load.spritesheet()`
-4. Update player rendering to use `this.add.sprite()` + `this.anims.create()`
-5. Play walk animation based on movement direction
+1. Generate spritesheets with Gemini (see SPRITE-GENERATION.md for prompts)
+2. Remove green background with `scripts/remove-background.py`
+3. Place in `public/assets/characters/`
+4. Load in BootScene with `this.load.spritesheet()`
+5. Update player rendering to use `this.add.sprite()` + `this.anims.create()`
+6. Play walk animation based on movement direction
 
 ## Pre-Commit Checklist
 
