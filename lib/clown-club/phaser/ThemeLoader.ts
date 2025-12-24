@@ -49,10 +49,17 @@ export interface LobbyTheme {
   effects?: ThemeEffects;
 }
 
+export interface ArcadeTheme {
+  mode?: 'unified' | 'layered';
+  background?: string;
+  props?: ThemeProp[];
+  effects?: ThemeEffects;
+}
+
 export interface Theme {
   name: string;
   lobby: LobbyTheme;
-  arcade?: unknown; // For future use
+  arcade?: ArcadeTheme;
 }
 
 export interface ThemeConfig {
@@ -70,6 +77,9 @@ export const THEME_ASSET_KEYS = {
   BUILDING_CENTER: 'theme-building-center',
   BUILDING_RIGHT: 'theme-building-right',
   PROP_PREFIX: 'theme-prop-',
+  // Arcade
+  ARCADE_BACKGROUND: 'theme-arcade-background',
+  ARCADE_PROP_PREFIX: 'theme-arcade-prop-',
 } as const;
 
 /**
@@ -149,6 +159,32 @@ export function preloadLobbyThemeAssets(scene: Phaser.Scene, lobbyTheme: LobbyTh
 
 // Legacy alias for backwards compatibility
 export const preloadThemeAssets = preloadLobbyThemeAssets;
+
+/**
+ * Get the arcade theme from config
+ */
+export function getArcadeTheme(config: ThemeConfig): ArcadeTheme | undefined {
+  const theme = getActiveTheme(config);
+  return theme.arcade;
+}
+
+/**
+ * Preload arcade theme assets in a Phaser scene
+ */
+export function preloadArcadeThemeAssets(scene: Phaser.Scene, arcadeTheme: ArcadeTheme): void {
+  const basePath = '/assets/themes/';
+
+  if (arcadeTheme.mode === 'unified' && arcadeTheme.background) {
+    scene.load.image(THEME_ASSET_KEYS.ARCADE_BACKGROUND, basePath + arcadeTheme.background);
+  }
+
+  // Load prop sprites if any
+  if (arcadeTheme.props) {
+    arcadeTheme.props.forEach((prop, index) => {
+      scene.load.image(THEME_ASSET_KEYS.ARCADE_PROP_PREFIX + index, basePath + prop.sprite);
+    });
+  }
+}
 
 /**
  * Fallback config when theme-config.json doesn't exist or can't be loaded

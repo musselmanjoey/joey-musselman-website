@@ -5,6 +5,8 @@ import { RemotePlayer } from '../entities/RemotePlayer';
 import { InteractiveObject } from '../entities/InteractiveObject';
 import { InteractionResult, GameStartedData } from '../../types';
 import { gameEvents } from '../../gameEvents';
+import { createGamesRoomBackground } from '../WorldRenderer';
+import { ArcadeTheme } from '../ThemeLoader';
 
 interface PlayerData {
   id: string;
@@ -33,6 +35,9 @@ interface WorldState {
   objects: ObjectData[];
 }
 
+// Set to true to enable coordinate debugging - click anywhere to see coordinates
+const DEBUG_COORDINATES = false;
+
 export class GamesRoomScene extends Phaser.Scene {
   private socket!: Socket;
   private playerId!: string;
@@ -45,6 +50,8 @@ export class GamesRoomScene extends Phaser.Scene {
   private constructionOverlay?: Phaser.GameObjects.Container;
   private lastMoveTime: number = 0;
   private static readonly MOVE_THROTTLE_MS = 100;
+  private debugText?: Phaser.GameObjects.Text;
+  private debugMarkers: Phaser.GameObjects.Container[] = [];
 
   constructor() {
     super('GamesRoomScene');
@@ -73,6 +80,61 @@ export class GamesRoomScene extends Phaser.Scene {
 
     // Fade in from black (coming from zone transition)
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    // Debug coordinate mode
+    if (DEBUG_COORDINATES) {
+      this.setupDebugMode();
+    }
+  }
+
+  private setupDebugMode() {
+    // Create debug text display
+    this.debugText = this.add.text(10, 10, 'DEBUG MODE: Click to mark coordinates', {
+      fontSize: '14px',
+      color: '#00ff00',
+      backgroundColor: '#000000aa',
+      padding: { x: 8, y: 4 },
+    });
+    this.debugText.setDepth(1000);
+    this.debugText.setScrollFactor(0);
+
+    // Add click listener for coordinate marking
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      const x = Math.round(pointer.x);
+      const y = Math.round(pointer.y);
+
+      // Update debug text
+      this.debugText?.setText(`Click: (${x}, ${y})\nMarkers: ${this.debugMarkers.length + 1}`);
+
+      // Create a marker at click position
+      const marker = this.add.container(x, y);
+      marker.setDepth(999);
+
+      // Crosshair
+      const cross = this.add.graphics();
+      cross.lineStyle(2, 0x00ff00, 1);
+      cross.lineBetween(-10, 0, 10, 0);
+      cross.lineBetween(0, -10, 0, 10);
+      marker.add(cross);
+
+      // Coordinate label
+      const label = this.add.text(5, 5, `(${x}, ${y})`, {
+        fontSize: '12px',
+        color: '#00ff00',
+        backgroundColor: '#000000cc',
+        padding: { x: 4, y: 2 },
+      });
+      marker.add(label);
+
+      this.debugMarkers.push(marker);
+
+      // Log to console for easy copying
+      console.log(`[DEBUG] Clicked at: { x: ${x}, y: ${y} }`);
+    });
+
+    // Instructions
+    console.log('[DEBUG] Coordinate mode enabled. Click anywhere to mark positions.');
+    console.log('[DEBUG] Coordinates will be logged to console for easy copying.');
   }
 
   private cleanup() {
@@ -82,49 +144,20 @@ export class GamesRoomScene extends Phaser.Scene {
   }
 
   private createBackground() {
-    const width = 800;
-    const height = 600;
+    // Use shared WorldRenderer for consistent background across player and host views
+    const backgroundContainer = this.add.container(0, 0);
+    backgroundContainer.setDepth(-100);
 
-    // Dark arcade room background
-    const bg = this.add.graphics();
-    bg.setDepth(-100);
+    // Get arcade theme from registry
+    const arcadeTheme = this.registry.get('arcadeTheme') as ArcadeTheme | undefined;
 
-    // Floor - dark purple/blue arcade carpet
-    bg.fillStyle(0x1a1a2e, 1);
-    bg.fillRect(0, 0, width, height);
+    createGamesRoomBackground(this, backgroundContainer, {
+      width: 800,
+      height: 600,
+    }, arcadeTheme);
 
-    // Add some neon accent lines
-    bg.lineStyle(3, 0xff00ff, 0.5);
-    bg.lineBetween(0, height - 100, width, height - 100);
-
-    bg.lineStyle(2, 0x00ffff, 0.3);
-    bg.lineBetween(0, 150, width, 150);
-
-    // Wall at top
-    bg.fillStyle(0x0f0f1a, 1);
-    bg.fillRect(0, 0, width, 150);
-
-    // Arcade room title
-    const title = this.add.text(width / 2, 80, 'GAMES ROOM', {
-      fontSize: '48px',
-      color: '#ff00ff',
-      fontStyle: 'bold',
-    });
-    title.setOrigin(0.5);
-    title.setDepth(-90);
-
-    // Add glow effect to title
-    title.setShadow(0, 0, '#ff00ff', 10, true, true);
-
-    // Add "EXIT" sign above door area (left side)
-    const exitSign = this.add.text(100, 350, 'EXIT', {
-      fontSize: '20px',
-      color: '#ff0000',
-      backgroundColor: '#000000',
-      padding: { x: 8, y: 4 },
-    });
-    exitSign.setOrigin(0.5);
-    exitSign.setDepth(-80);
+    // Note: EXIT sign and interactive objects come from server via world state
+    // No need to add them here - they're rendered in loadWorldState()
   }
 
   private setupSocketListeners() {

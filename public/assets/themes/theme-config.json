@@ -12,9 +12,8 @@
         }
       },
       "arcade": {
-        "layers": {
-          "background": "default/arcade/background.png"
-        },
+        "mode": "unified",
+        "background": "default/arcade/arcade-background.png",
         "header": {
           "sprite": "default/arcade/neon-sign.png",
           "x": 400,

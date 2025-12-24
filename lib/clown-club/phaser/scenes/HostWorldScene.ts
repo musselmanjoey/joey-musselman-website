@@ -2,6 +2,14 @@ import * as Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
 import { characters } from '../assets/AssetRegistry';
 import { gameEvents } from '../../gameEvents';
+import {
+  createLobbyBackground,
+  createGamesRoomBackground,
+  resolveCharacterSpriteKey,
+  getSpriteScale,
+  getSpritePositions,
+} from '../WorldRenderer';
+import { LobbyTheme, ArcadeTheme } from '../ThemeLoader';
 
 type Direction = 'down' | 'left' | 'right' | 'up';
 
@@ -57,6 +65,9 @@ export class HostWorldScene extends Phaser.Scene {
   private gameActiveData?: { gameType: string };
   private viewGameButton?: Phaser.GameObjects.Container;
   private selectedGameType?: string; // Which game the host is viewing
+  private lobbyTheme?: LobbyTheme;
+  private arcadeTheme?: ArcadeTheme;
+  private tvLabel?: Phaser.GameObjects.Text;
 
   constructor() {
     super('HostWorldScene');
@@ -64,6 +75,8 @@ export class HostWorldScene extends Phaser.Scene {
 
   create() {
     this.socket = this.registry.get('socket');
+    this.lobbyTheme = this.registry.get('lobbyTheme');
+    this.arcadeTheme = this.registry.get('arcadeTheme');
     this.players.clear();
     this.currentZone = 'lobby';
     this.gameActiveData = undefined;
@@ -175,13 +188,16 @@ export class HostWorldScene extends Phaser.Scene {
 
   private createBackground() {
     if (this.currentZone === 'games') {
-      this.createGamesRoomBackground();
+      this.createGamesRoomBackgroundWithObjects();
     } else {
-      this.createLobbyBackground();
+      this.createLobbyBackgroundWithObjects();
     }
 
-    // TV Display label (always shown)
-    this.add.text(640, 30, '📺 CLOWN CLUB TV', {
+    // TV Display label (always shown) - destroy old one first
+    if (this.tvLabel) {
+      this.tvLabel.destroy();
+    }
+    this.tvLabel = this.add.text(640, 30, '📺 CLOWN CLUB TV', {
       fontSize: '28px',
       color: '#171717',
       fontStyle: 'bold',
@@ -190,143 +206,96 @@ export class HostWorldScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(1000);
   }
 
-  private createLobbyBackground() {
-    // Sky gradient
-    const skyGradient = this.add.graphics();
-    skyGradient.fillGradientStyle(0x87CEEB, 0x87CEEB, 0x5BA3C6, 0x5BA3C6, 1);
-    skyGradient.fillRect(0, 0, 1280, 500);
-    this.backgroundContainer?.add(skyGradient);
-
-    // Distant mountains
-    const mountains = this.add.graphics();
-    mountains.fillStyle(0xE8F4F8, 1);
-    mountains.beginPath();
-    mountains.moveTo(0, 350);
-    mountains.lineTo(160, 250);
-    mountains.lineTo(320, 310);
-    mountains.lineTo(510, 220);
-    mountains.lineTo(720, 300);
-    mountains.lineTo(880, 240);
-    mountains.lineTo(1090, 290);
-    mountains.lineTo(1280, 250);
-    mountains.lineTo(1280, 350);
-    mountains.closePath();
-    mountains.fill();
-    this.backgroundContainer?.add(mountains);
-
-    // Secondary mountains
-    const mountains2 = this.add.graphics();
-    mountains2.fillStyle(0xD4E8F0, 1);
-    mountains2.beginPath();
-    mountains2.moveTo(0, 380);
-    mountains2.lineTo(240, 330);
-    mountains2.lineTo(450, 370);
-    mountains2.lineTo(640, 310);
-    mountains2.lineTo(830, 350);
-    mountains2.lineTo(1040, 320);
-    mountains2.lineTo(1280, 370);
-    mountains2.lineTo(1280, 400);
-    mountains2.lineTo(0, 400);
-    mountains2.closePath();
-    mountains2.fill();
-    this.backgroundContainer?.add(mountains2);
-
-    // Main snowy ground
-    const snowGround = this.add.graphics();
-    snowGround.fillStyle(0xFAFAFA, 1);
-    snowGround.fillRect(0, 400, 1280, 320);
-    this.backgroundContainer?.add(snowGround);
-
-    // Snow texture patches
-    for (let i = 0; i < 30; i++) {
-      const x = Math.random() * 1280;
-      const y = 420 + Math.random() * 280;
-      const size = 25 + Math.random() * 50;
-      const patch = this.add.ellipse(x, y, size, size * 0.4, 0xFFFFFF, 0.6);
-      this.backgroundContainer?.add(patch);
+  private createLobbyBackgroundWithObjects() {
+    // Use shared renderer for background (with scale for 1280x720)
+    if (this.backgroundContainer) {
+      createLobbyBackground(this, this.backgroundContainer, {
+        width: 1280,
+        height: 720,
+        scaleX: 1280 / 800,
+        scaleY: 720 / 600,
+      }, this.lobbyTheme);
     }
 
-    // Icy patches
-    this.backgroundContainer?.add(this.add.ellipse(240, 580, 100, 40, 0xB8E0F0, 0.5));
-    this.backgroundContainer?.add(this.add.ellipse(960, 620, 120, 45, 0xB8E0F0, 0.4));
-    this.backgroundContainer?.add(this.add.ellipse(560, 650, 90, 30, 0xB8E0F0, 0.5));
-
-    // Wooden walkway
-    const path = this.add.graphics();
-    path.fillStyle(0x8B6914, 1);
-    path.fillRect(480, 480, 320, 220);
-    for (let y = 490; y < 700; y += 30) {
-      path.lineStyle(2, 0x6B4F12);
-      path.lineBetween(480, y, 800, y);
-    }
-    this.backgroundContainer?.add(path);
-
-    // Buildings (scaled up for 1280x720)
-    this.createBuilding(130, 340, 0x8B4513, '☕', 'Cafe');
-    this.createBuilding(640, 320, 0x4A90A4, '🎁', 'Shop');
-    this.createBuilding(1120, 340, 0x9B59B6, '🎵', 'Club');
-
-    // Props
-    this.createLampPost(320, 460);
-    this.createLampPost(930, 470);
-    this.createBench(190, 540);
-    this.createBench(1040, 560);
-    this.createSnowyTree(80, 420);
-    this.createSnowyTree(1200, 430);
-    this.createSnowyTree(50, 500);
-
-    // Snowman
-    const snowman = this.add.text(450, 440, '⛄', { fontSize: '50px' }).setOrigin(0.5);
-    this.objectsContainer?.add(snowman);
-
-    // Door to games room
-    const door = this.add.text(1120, 520, '🚪', { fontSize: '48px' }).setOrigin(0.5);
-    this.objectsContainer?.add(door);
-    const doorLabel = this.add.text(1120, 560, 'Games Room', {
-      fontSize: '14px',
-      color: '#ffffff',
-      backgroundColor: '#00000080',
-      padding: { x: 8, y: 3 },
-    }).setOrigin(0.5);
-    this.objectsContainer?.add(doorLabel);
+    // Add lobby-specific objects
+    this.createLobbyObjects();
   }
 
-  private createGamesRoomBackground() {
-    const width = 1280;
-    const height = 720;
+  private createLobbyObjects() {
+    // Host uses tabs for zone switching, no door needed
+  }
 
-    // Dark arcade room background
-    const bg = this.add.graphics();
+  private createGamesRoomBackgroundWithObjects() {
+    // Use shared renderer for background with arcade theme
+    if (this.backgroundContainer) {
+      createGamesRoomBackground(this, this.backgroundContainer, {
+        width: 1280,
+        height: 720,
+      }, this.arcadeTheme);
+    }
 
-    // Floor - dark purple/blue arcade carpet
-    bg.fillStyle(0x1a1a2e, 1);
-    bg.fillRect(0, 0, width, height);
+    // Add click areas for game cabinets (invisible when using themed bg)
+    if (this.arcadeTheme?.background) {
+      this.createThemedArcadeClickAreas();
+    } else {
+      this.createGamesRoomObjects();
+    }
+  }
 
-    // Add some neon accent lines (scaled for 1280x720)
-    bg.lineStyle(4, 0xff00ff, 0.5);
-    bg.lineBetween(0, height - 120, width, height - 120);
+  private createThemedArcadeClickAreas() {
+    // Scale factors: player view is 800x600, host view is 1280x720
+    const scaleX = 1280 / 800;
+    const scaleY = 720 / 600;
 
-    bg.lineStyle(3, 0x00ffff, 0.3);
-    bg.lineBetween(0, 180, width, 180);
+    // Arcade cabinet positions from ZoneConfig (player coordinates)
+    const cabinets = [
+      { x: 249, y: 316, label: 'Caption Contest', gameType: 'caption-contest', implemented: true },
+      { x: 356, y: 319, label: 'Board Rush', gameType: 'board-game', implemented: true },
+      { x: 459, y: 319, label: 'About You', gameType: 'about-you', implemented: false },
+      { x: 560, y: 316, label: 'Newly Webs', gameType: 'newly-webs', implemented: false },
+    ];
 
-    // Wall at top
-    bg.fillStyle(0x0f0f1a, 1);
-    bg.fillRect(0, 0, width, 180);
+    cabinets.forEach(cab => {
+      const x = cab.x * scaleX;
+      const y = cab.y * scaleY;
 
-    this.backgroundContainer?.add(bg);
+      // Invisible hit area
+      const hitArea = this.add.rectangle(x, y, 100 * scaleX, 120 * scaleY, 0x000000, 0);
+      hitArea.setInteractive({ useHandCursor: cab.implemented });
 
-    // Arcade room title
-    const title = this.add.text(width / 2, 130, 'GAMES ROOM', {
-      fontSize: '64px',
-      color: '#ff00ff',
-      fontStyle: 'bold',
+      if (cab.implemented) {
+        hitArea.on('pointerdown', () => {
+          this.showGameQueueForType(cab.gameType, cab.label);
+        });
+        hitArea.on('pointerover', () => {
+          // Show hover label
+          if (!this.tvLabel || this.tvLabel.text !== cab.label) {
+            this.tvLabel?.destroy();
+            this.tvLabel = this.add.text(x, y - 80, cab.label, {
+              fontSize: '18px',
+              color: '#ffffff',
+              backgroundColor: '#000000cc',
+              padding: { x: 10, y: 5 },
+            }).setOrigin(0.5).setDepth(100);
+          }
+        });
+        hitArea.on('pointerout', () => {
+          this.tvLabel?.destroy();
+          this.tvLabel = undefined;
+        });
+      }
+
+      this.objectsContainer?.add(hitArea);
     });
-    title.setOrigin(0.5);
-    title.setShadow(0, 0, '#ff00ff', 15, true, true);
-    this.backgroundContainer?.add(title);
+  }
 
-    // Add EXIT sign above door area (left side)
-    const exitSign = this.add.text(160, 420, 'EXIT', {
+  private createGamesRoomObjects() {
+    // Scale factors: player view is 800x600, host view is 1280x720
+    const scaleX = 1280 / 800;
+    const scaleY = 720 / 600;
+
+    // EXIT sign above door area (left side)
+    const exitSign = this.add.text(80 * scaleX, 420, 'EXIT', {
       fontSize: '24px',
       color: '#ff0000',
       backgroundColor: '#000000',
@@ -335,10 +304,10 @@ export class HostWorldScene extends Phaser.Scene {
     exitSign.setOrigin(0.5);
     this.objectsContainer?.add(exitSign);
 
-    // Door back to lobby
-    const door = this.add.text(160, 520, '🚪', { fontSize: '56px' }).setOrigin(0.5);
+    // Door back to lobby (matches server: x:80, y:520)
+    const door = this.add.text(80 * scaleX, 520 * scaleY, '🚪', { fontSize: '56px' }).setOrigin(0.5);
     this.objectsContainer?.add(door);
-    const doorLabel = this.add.text(160, 580, 'Lobby', {
+    const doorLabel = this.add.text(80 * scaleX, 560 * scaleY, 'Exit', {
       fontSize: '16px',
       color: '#ffffff',
       backgroundColor: '#000000aa',
@@ -346,55 +315,78 @@ export class HostWorldScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.objectsContainer?.add(doorLabel);
 
-    // Arcade cabinets (scaled positions for 1280x720)
-    this.createArcadeCabinet(400, 320, '🎲', 'Board Rush', 'board-game');
-    this.createArcadeCabinet(880, 320, '📸', 'Caption Contest', 'caption-contest');
+    // Arcade cabinets - matching server ZoneConfig.js positions
+    // Server defines: Caption Contest (150), Board Rush (300), About You (500), Newly Webs (650)
+    this.createArcadeCabinet(150 * scaleX, 180 * scaleY + 100, '📸', 'Caption Contest', 'caption-contest');
+    this.createArcadeCabinet(300 * scaleX, 180 * scaleY + 100, '🎲', 'Board Rush', 'board-game');
+    this.createArcadeCabinet(500 * scaleX, 180 * scaleY + 100, '💭', 'About You', 'about-you');
+    this.createArcadeCabinet(650 * scaleX, 180 * scaleY + 100, '🕸️', 'Newly Webs', 'newly-webs');
   }
 
   private createArcadeCabinet(x: number, y: number, emoji: string, label: string, gameType: string) {
-    // Cabinet body
+    // Check if this game is implemented
+    const implementedGames = ['board-game', 'caption-contest'];
+    const isImplemented = implementedGames.includes(gameType);
+
+    // Cabinet body - grayed out if not implemented
     const cabinet = this.add.graphics();
-    cabinet.fillStyle(0x2d2d44, 1);
+    const cabinetColor = isImplemented ? 0x2d2d44 : 0x1a1a2a;
+    const screenColor = isImplemented ? 0x00ffff : 0x333355;
+    cabinet.fillStyle(cabinetColor, 1);
     cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
-    cabinet.fillStyle(0x00ffff, 0.3);
+    cabinet.fillStyle(screenColor, isImplemented ? 0.3 : 0.2);
     cabinet.fillRect(x - 40, y - 50, 80, 60);
     cabinet.setDepth(-5);
     this.objectsContainer?.add(cabinet);
 
     // Emoji
     const icon = this.add.text(x, y - 20, emoji, { fontSize: '48px' }).setOrigin(0.5);
+    if (!isImplemented) icon.setAlpha(0.5);
     this.objectsContainer?.add(icon);
 
     // Label
     const labelText = this.add.text(x, y + 80, label, {
       fontSize: '18px',
-      color: '#ffffff',
+      color: isImplemented ? '#ffffff' : '#888888',
       backgroundColor: '#000000aa',
       padding: { x: 10, y: 5 },
     }).setOrigin(0.5);
     this.objectsContainer?.add(labelText);
 
-    // Interactive hit area for host to click
-    const hitArea = this.add.rectangle(x, y, 120, 140, 0x000000, 0);
-    hitArea.setInteractive({ useHandCursor: true });
-    hitArea.on('pointerdown', () => {
-      this.showGameQueueForType(gameType, label);
-    });
-    hitArea.on('pointerover', () => {
-      cabinet.clear();
-      cabinet.fillStyle(0x3d3d54, 1);
-      cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
-      cabinet.fillStyle(0x00ffff, 0.5);
-      cabinet.fillRect(x - 40, y - 50, 80, 60);
-    });
-    hitArea.on('pointerout', () => {
-      cabinet.clear();
-      cabinet.fillStyle(0x2d2d44, 1);
-      cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
-      cabinet.fillStyle(0x00ffff, 0.3);
-      cabinet.fillRect(x - 40, y - 50, 80, 60);
-    });
-    this.objectsContainer?.add(hitArea);
+    // "Coming Soon" badge for unimplemented games
+    if (!isImplemented) {
+      const badge = this.add.text(x, y + 30, '🚧 Soon', {
+        fontSize: '12px',
+        color: '#fbbf24',
+        backgroundColor: '#000000cc',
+        padding: { x: 6, y: 2 },
+      }).setOrigin(0.5);
+      this.objectsContainer?.add(badge);
+    }
+
+    // Interactive hit area for host to click (only for implemented games)
+    if (isImplemented) {
+      const hitArea = this.add.rectangle(x, y, 120, 140, 0x000000, 0);
+      hitArea.setInteractive({ useHandCursor: true });
+      hitArea.on('pointerdown', () => {
+        this.showGameQueueForType(gameType, label);
+      });
+      hitArea.on('pointerover', () => {
+        cabinet.clear();
+        cabinet.fillStyle(0x3d3d54, 1);
+        cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
+        cabinet.fillStyle(0x00ffff, 0.5);
+        cabinet.fillRect(x - 40, y - 50, 80, 60);
+      });
+      hitArea.on('pointerout', () => {
+        cabinet.clear();
+        cabinet.fillStyle(0x2d2d44, 1);
+        cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
+        cabinet.fillStyle(0x00ffff, 0.3);
+        cabinet.fillRect(x - 40, y - 50, 80, 60);
+      });
+      this.objectsContainer?.add(hitArea);
+    }
   }
 
   private showGameQueueForType(gameType: string, gameName: string) {
@@ -759,11 +751,19 @@ export class HostWorldScene extends Phaser.Scene {
     const container = this.add.container(x, y) as PlayerContainer;
     const children: Phaser.GameObjects.GameObject[] = [];
 
-    // Look up sprite key from character type
-    const charConfig = Object.entries(characters).find(
-      ([, config]) => config.emoji === data.character
-    );
-    const spriteKey = charConfig?.[1].spriteKey || null;
+    // Character can be either:
+    // - A sprite key directly (e.g., 'clown-white', 'clown-blue')
+    // - An emoji for legacy support (e.g., '🤡')
+    let spriteKey: string | null = null;
+    if (data.character?.startsWith('clown-') || data.character === 'penguin-blue' || data.character === 'green-cap') {
+      spriteKey = data.character;
+    } else {
+      // Legacy: look up sprite key from emoji
+      const charConfig = Object.entries(characters).find(
+        ([, config]) => config.emoji === data.character
+      );
+      spriteKey = charConfig?.[1].spriteKey || null;
+    }
     container.spriteKey = spriteKey;
     container.currentDirection = 'down';
     container.isMoving = false;
@@ -780,9 +780,11 @@ export class HostWorldScene extends Phaser.Scene {
     if (spriteKey && this.textures.exists(spriteKey)) {
       const sprite = this.add.sprite(0, 0, spriteKey);
       sprite.setOrigin(0.5, 0.5);
-      // Scale down large sprites (clown is 256x256)
-      if (spriteKey.startsWith('clown')) {
-        sprite.setScale(0.25);
+      // Scale sprites for host display (256px * 0.35 = ~90px)
+      if (spriteKey.startsWith('clown-')) {
+        sprite.setScale(0.35);
+      } else if (spriteKey === 'green-cap') {
+        sprite.setScale(2.5);
       }
       sprite.play(`${spriteKey}-idle-down`);
       container.sprite = sprite;
@@ -843,15 +845,18 @@ export class HostWorldScene extends Phaser.Scene {
   private movePlayer(playerId: string, x: number, y: number) {
     const player = this.players.get(playerId);
     if (player) {
+      // Kill any existing movement tween for this player
+      this.tweens.killTweensOf(player);
+
       // Scale positions
       const scaleX = 1280 / 800;
       const scaleY = 720 / 600;
       const targetX = x * scaleX;
       const targetY = y * scaleY;
 
-      // Calculate direction based on movement
-      const dx = targetX - (player.lastX || player.x);
-      const dy = targetY - (player.lastY || player.y);
+      // Calculate direction based on movement from CURRENT position
+      const dx = targetX - player.x;
+      const dy = targetY - player.y;
 
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
         const direction = this.getDirection(dx, dy);
@@ -860,14 +865,16 @@ export class HostWorldScene extends Phaser.Scene {
         this.playPlayerAnimation(player, direction, true);
       }
 
-      player.lastX = targetX;
-      player.lastY = targetY;
+      // Calculate distance and duration to match player speed (200 px/sec)
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const moveSpeed = 200; // pixels per second, same as Player
+      const duration = Math.max(50, (distance / moveSpeed) * 1000);
 
       this.tweens.add({
         targets: player,
         x: targetX,
         y: targetY,
-        duration: 200,
+        duration,
         ease: 'Linear',
         onComplete: () => {
           // Play idle animation when stopped

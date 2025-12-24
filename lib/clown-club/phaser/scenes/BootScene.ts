@@ -1,10 +1,11 @@
 import * as Phaser from 'phaser';
 import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS, TUTORIAL_DIRECTION_ROWS } from '../assets/AssetRegistry';
-import { loadThemeConfig, getLobbyTheme, preloadLobbyThemeAssets, LobbyTheme, ThemeConfig } from '../ThemeLoader';
+import { loadThemeConfig, getLobbyTheme, getArcadeTheme, preloadLobbyThemeAssets, preloadArcadeThemeAssets, LobbyTheme, ArcadeTheme, ThemeConfig } from '../ThemeLoader';
 
 export class BootScene extends Phaser.Scene {
   private themeConfig: ThemeConfig | null = null;
   private lobbyTheme: LobbyTheme | null = null;
+  private arcadeTheme: ArcadeTheme | undefined = undefined;
   private themeAssetsLoaded = false;
 
   constructor() {
@@ -33,6 +34,7 @@ export class BootScene extends Phaser.Scene {
     try {
       this.themeConfig = await loadThemeConfig();
       this.lobbyTheme = getLobbyTheme(this.themeConfig);
+      this.arcadeTheme = getArcadeTheme(this.themeConfig);
 
       // Only preload theme assets if they have paths (not procedural fallback)
       const hasUnifiedBg = this.lobbyTheme.mode === 'unified' && this.lobbyTheme.background;
@@ -41,6 +43,11 @@ export class BootScene extends Phaser.Scene {
       if (hasUnifiedBg || hasLayeredBg) {
         preloadLobbyThemeAssets(this, this.lobbyTheme);
         this.themeAssetsLoaded = true;
+      }
+
+      // Load arcade theme assets
+      if (this.arcadeTheme?.mode === 'unified' && this.arcadeTheme.background) {
+        preloadArcadeThemeAssets(this, this.arcadeTheme);
       }
     } catch (error) {
       console.warn('Theme loading failed, using procedural fallback:', error);
@@ -51,6 +58,7 @@ export class BootScene extends Phaser.Scene {
     // Store theme info in registry for other scenes to access
     this.registry.set('themeConfig', this.themeConfig);
     this.registry.set('lobbyTheme', this.lobbyTheme);
+    this.registry.set('arcadeTheme', this.arcadeTheme);
     this.registry.set('themeAssetsLoaded', this.themeAssetsLoaded);
 
     // Create animations for each character spritesheet

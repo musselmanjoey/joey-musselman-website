@@ -12,7 +12,7 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
   private chatBubble?: Phaser.GameObjects.Container;
   private targetX: number;
   private targetY: number;
-  private lerpFactor: number = 0.1;
+  private moveSpeed: number = 200;
   private spriteKey: string | null = null;
   private currentDirection: Direction = 'down';
   private isMoving: boolean = false;
@@ -230,17 +230,18 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
   }
 
   update(delta: number) {
-    // Smooth interpolation toward target position
-    const t = 1 - Math.pow(1 - this.lerpFactor, delta / 16.67);
-
     const dx = this.targetX - this.x;
     const dy = this.targetY - this.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Only interpolate if we're far enough away
-    if (distance > 2) {
-      this.x += dx * t;
-      this.y += dy * t;
+    // Move at constant speed (same as local Player)
+    if (distance > 5) {
+      const speed = this.moveSpeed * (delta / 1000);
+      const moveX = (dx / distance) * Math.min(speed, distance);
+      const moveY = (dy / distance) * Math.min(speed, distance);
+
+      this.x += moveX;
+      this.y += moveY;
     } else {
       this.x = this.targetX;
       this.y = this.targetY;

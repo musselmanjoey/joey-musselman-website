@@ -6,6 +6,7 @@ import { InteractiveObject } from '../entities/InteractiveObject';
 import { GameInfo, InteractionResult, GameStartedData } from '../../types';
 import { gameEvents } from '../../gameEvents';
 import { LobbyTheme, THEME_ASSET_KEYS } from '../ThemeLoader';
+import { createLobbyBackground } from '../WorldRenderer';
 
 interface PlayerData {
   id: string;
@@ -46,6 +47,7 @@ export class LobbyScene extends Phaser.Scene {
   private static readonly MOVE_THROTTLE_MS = 100;
   private lobbyTheme?: LobbyTheme;
   private themeAssetsLoaded = false;
+  private backgroundContainer?: Phaser.GameObjects.Container;
   private debugCoordText?: Phaser.GameObjects.Text;
   private static readonly DEBUG_MODE = false; // Set to true to enable coordinate display
 
@@ -62,11 +64,19 @@ export class LobbyScene extends Phaser.Scene {
     this.lobbyTheme = this.registry.get('lobbyTheme');
     this.themeAssetsLoaded = this.registry.get('themeAssetsLoaded') || false;
 
-    // Create background (themed if assets loaded, otherwise procedural)
-    if (this.themeAssetsLoaded && this.lobbyTheme) {
-      this.createThemedBackground();
-    } else {
-      this.createProceduralBackground();
+    // Create background container
+    this.backgroundContainer = this.add.container(0, 0);
+    this.backgroundContainer.setDepth(-100);
+
+    // Create background using shared WorldRenderer
+    createLobbyBackground(this, this.backgroundContainer, {
+      width: 800,
+      height: 600,
+    }, this.lobbyTheme);
+
+    // Add theme-based effects
+    if (this.lobbyTheme?.effects?.snowfall) {
+      this.createSnowfallEffect();
     }
 
     // Setup socket listeners

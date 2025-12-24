@@ -7,6 +7,7 @@ import { HostWorldScene } from './scenes/HostWorldScene';
 import { HostBoardGameScene } from './scenes/HostBoardGameScene';
 import { HostCaptionContestScene } from './scenes/HostCaptionContestScene';
 import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS } from './assets/AssetRegistry';
+import { loadThemeConfig, getLobbyTheme, getArcadeTheme, preloadLobbyThemeAssets, preloadArcadeThemeAssets, LobbyTheme, ArcadeTheme, ThemeConfig } from './ThemeLoader';
 
 interface HostPhaserWrapperProps {
   socket: Socket;
@@ -14,11 +15,16 @@ interface HostPhaserWrapperProps {
 
 // Boot scene that loads assets and waits for socket before starting world
 class HostBootScene extends Phaser.Scene {
+  private themeConfig: ThemeConfig | null = null;
+  private lobbyTheme: LobbyTheme | null = null;
+  private arcadeTheme: ArcadeTheme | undefined = undefined;
+  private themeAssetsLoaded: boolean = false;
+
   constructor() {
     super('HostBootScene');
   }
 
-  preload() {
+  async preload() {
     // Load all character spritesheets
     Object.values(spriteConfigs).forEach((config) => {
       this.load.spritesheet(config.key, config.path, {
@@ -26,9 +32,37 @@ class HostBootScene extends Phaser.Scene {
         frameHeight: config.frameHeight,
       });
     });
+
+    // Load theme config and assets (same as regular BootScene)
+    try {
+      this.themeConfig = await loadThemeConfig();
+      this.lobbyTheme = getLobbyTheme(this.themeConfig);
+      this.arcadeTheme = getArcadeTheme(this.themeConfig);
+
+      const hasUnifiedBg = this.lobbyTheme.mode === 'unified' && this.lobbyTheme.background;
+      const hasLayeredBg = this.lobbyTheme.layers?.sky;
+
+      if (hasUnifiedBg || hasLayeredBg) {
+        preloadLobbyThemeAssets(this, this.lobbyTheme);
+        this.themeAssetsLoaded = true;
+      }
+
+      // Load arcade theme assets
+      if (this.arcadeTheme?.mode === 'unified' && this.arcadeTheme.background) {
+        preloadArcadeThemeAssets(this, this.arcadeTheme);
+      }
+    } catch (err) {
+      console.warn('[HostBoot] Failed to load theme config:', err);
+    }
   }
 
   create() {
+    // Store theme in registry for HostWorldScene to use
+    this.registry.set('themeConfig', this.themeConfig);
+    this.registry.set('lobbyTheme', this.lobbyTheme);
+    this.registry.set('arcadeTheme', this.arcadeTheme);
+    this.registry.set('themeAssetsLoaded', this.themeAssetsLoaded);
+
     // Create character animations
     this.createCharacterAnimations();
 
