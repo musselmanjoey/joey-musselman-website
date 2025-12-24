@@ -6,6 +6,7 @@ import { Socket } from 'socket.io-client';
 import { HostWorldScene } from './scenes/HostWorldScene';
 import { HostBoardGameScene } from './scenes/HostBoardGameScene';
 import { HostCaptionContestScene } from './scenes/HostCaptionContestScene';
+import { HostAboutYouScene } from './scenes/HostAboutYouScene';
 import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS } from './assets/AssetRegistry';
 import { loadThemeConfig, getLobbyTheme, getArcadeTheme, preloadLobbyThemeAssets, preloadArcadeThemeAssets, LobbyTheme, ArcadeTheme, ThemeConfig } from './ThemeLoader';
 
@@ -144,7 +145,7 @@ function createHostGameConfig(parent: string): Phaser.Types.Core.GameConfig {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [HostBootScene, HostWorldScene, HostBoardGameScene, HostCaptionContestScene],
+    scene: [HostBootScene, HostWorldScene, HostBoardGameScene, HostCaptionContestScene, HostAboutYouScene],
   };
 }
 

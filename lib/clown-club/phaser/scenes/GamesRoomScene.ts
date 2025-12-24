@@ -279,6 +279,9 @@ export class GamesRoomScene extends Phaser.Scene {
       } else if (gameData.gameType === 'caption-contest') {
         this.scene.pause();
         this.scene.launch('CaptionContestScene');
+      } else if (gameData.gameType === 'about-you') {
+        this.scene.pause();
+        this.scene.launch('AboutYouScene');
       }
     });
 

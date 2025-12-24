@@ -658,6 +658,19 @@ export class LobbyScene extends Phaser.Scene {
           console.error('[Clown Club] Error launching CaptionContestScene:', error);
           this.scene.resume();
         }
+      } else if (gameData.gameType === 'about-you') {
+        try {
+          if (this.scene.isActive('AboutYouScene') || this.scene.isPaused('AboutYouScene')) {
+            console.log('[Clown Club] Stopping existing AboutYouScene');
+            this.scene.stop('AboutYouScene');
+          }
+          this.scene.pause();
+          console.log('[Clown Club] Launching AboutYouScene');
+          this.scene.launch('AboutYouScene');
+        } catch (error) {
+          console.error('[Clown Club] Error launching AboutYouScene:', error);
+          this.scene.resume();
+        }
       }
     });
 

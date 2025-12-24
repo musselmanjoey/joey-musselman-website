@@ -251,7 +251,7 @@ export class HostWorldScene extends Phaser.Scene {
     const cabinets = [
       { x: 249, y: 316, label: 'Caption Contest', gameType: 'caption-contest', implemented: true },
       { x: 356, y: 319, label: 'Board Rush', gameType: 'board-game', implemented: true },
-      { x: 459, y: 319, label: 'About You', gameType: 'about-you', implemented: false },
+      { x: 459, y: 319, label: 'About You', gameType: 'about-you', implemented: true },
       { x: 560, y: 316, label: 'Newly Webs', gameType: 'newly-webs', implemented: false },
     ];
 
@@ -325,7 +325,7 @@ export class HostWorldScene extends Phaser.Scene {
 
   private createArcadeCabinet(x: number, y: number, emoji: string, label: string, gameType: string) {
     // Check if this game is implemented
-    const implementedGames = ['board-game', 'caption-contest'];
+    const implementedGames = ['board-game', 'caption-contest', 'about-you'];
     const isImplemented = implementedGames.includes(gameType);
 
     // Cabinet body - grayed out if not implemented
@@ -954,9 +954,12 @@ export class HostWorldScene extends Phaser.Scene {
     // Click handler - switch to game scene
     bg.on('pointerdown', () => {
       if (this.gameActiveData) {
-        const sceneName = this.gameActiveData.gameType === 'caption-contest'
-          ? 'HostCaptionContestScene'
-          : 'HostBoardGameScene';
+        let sceneName = 'HostBoardGameScene';
+        if (this.gameActiveData.gameType === 'caption-contest') {
+          sceneName = 'HostCaptionContestScene';
+        } else if (this.gameActiveData.gameType === 'about-you') {
+          sceneName = 'HostAboutYouScene';
+        }
         console.log('[HostWorld] Manual switch to:', sceneName);
         this.scene.start(sceneName);
       }
