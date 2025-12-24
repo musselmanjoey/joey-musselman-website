@@ -365,7 +365,7 @@ export class GamesRoomScene extends Phaser.Scene {
       this.localPlayer = undefined;
     }
 
-    // Create interactive objects
+    // Create interactive objects (invisible hitboxes - visuals are in background)
     for (const objData of state.objects) {
       const obj = new InteractiveObject(
         this,
@@ -374,18 +374,6 @@ export class GamesRoomScene extends Phaser.Scene {
         objData.emoji,
         objData.id
       );
-
-      // Add label for arcade cabinets
-      if (objData.label) {
-        const label = this.add.text(objData.x, objData.y + 40, objData.label, {
-          fontSize: '14px',
-          color: '#ffffff',
-          backgroundColor: '#000000aa',
-          padding: { x: 6, y: 3 },
-        });
-        label.setOrigin(0.5);
-        label.setDepth(obj.depth - 1);
-      }
 
       this.interactiveObjects.push(obj);
     }
