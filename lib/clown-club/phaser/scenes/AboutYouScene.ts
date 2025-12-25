@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
+import { MultipleChoice } from '../ui';
 
 /**
  * AboutYouScene - Player mobile view for "How Well Do You Know Me?" game
@@ -8,11 +9,16 @@ import { Socket } from 'socket.io-client';
  * Phases: lobby → answering (everyone) → reveal → round-summary → game-over
  */
 
+interface ChoiceOption {
+  id: string;
+  text: string;
+}
+
 interface Question {
   id: string;
-  type: string;
+  type: 'free' | 'multiple';
   prompt: string;
-  options?: string[];
+  options?: ChoiceOption[];
 }
 
 interface PhaseData {
@@ -98,6 +104,7 @@ export class AboutYouScene extends Phaser.Scene {
   private inputContainer!: Phaser.GameObjects.Container;
   private answerInput?: Phaser.GameObjects.DOMElement;
   private submitButton!: Phaser.GameObjects.Container;
+  private multipleChoice?: MultipleChoice;
 
   private resultContainer!: Phaser.GameObjects.Container;
   private summaryContainer!: Phaser.GameObjects.Container;
@@ -357,6 +364,11 @@ export class AboutYouScene extends Phaser.Scene {
     if (this.answerInput) {
       this.answerInput.setVisible(false);
     }
+    // Clean up multiple choice
+    if (this.multipleChoice) {
+      this.multipleChoice.destroy();
+      this.multipleChoice = undefined;
+    }
     this.resultContainer.setVisible(false);
     this.resultContainer.removeAll(true);
     this.summaryContainer.setVisible(false);
@@ -457,7 +469,7 @@ export class AboutYouScene extends Phaser.Scene {
     this.hasAnswered = false;
 
     // Reset content container position for answering
-    this.contentContainer.setY(200);
+    this.contentContainer.setY(180);
 
     if (data.timer) {
       this.updateTimer(data.timer);
@@ -477,22 +489,32 @@ export class AboutYouScene extends Phaser.Scene {
     this.contentContainer.add(questionDisplay);
 
     // Role hint below question
+    const hintY = 55;
     if (this.isMainCharacter) {
-      const hint = this.add.text(0, 60, '⭐ Answer honestly!', {
+      const hint = this.add.text(0, hintY, '⭐ Answer honestly!', {
         fontSize: '18px',
         color: '#fbbf24',
         fontStyle: 'bold',
       }).setOrigin(0.5);
       this.contentContainer.add(hint);
     } else {
-      const hint = this.add.text(0, 60, `What will ${this.mainCharacterName} say?`, {
+      const hint = this.add.text(0, hintY, `What will ${this.mainCharacterName} say?`, {
         fontSize: '18px',
         color: '#9ca3af',
       }).setOrigin(0.5);
       this.contentContainer.add(hint);
     }
 
-    // Clear and show input
+    // Show appropriate input based on question type
+    if (data.question?.type === 'multiple' && data.question.options) {
+      this.showMultipleChoiceInput(data.question.options);
+    } else {
+      this.showFreeTextInput();
+    }
+  }
+
+  private showFreeTextInput() {
+    // Clear and show text input
     const textarea = document.getElementById('answer-input') as HTMLTextAreaElement;
     if (textarea) textarea.value = '';
 
@@ -500,6 +522,41 @@ export class AboutYouScene extends Phaser.Scene {
     if (this.answerInput) {
       this.answerInput.setVisible(true);
     }
+    this.submitButton.setVisible(true);
+
+    // Hide multiple choice if it exists
+    if (this.multipleChoice) {
+      this.multipleChoice.setVisible(false);
+    }
+  }
+
+  private showMultipleChoiceInput(options: ChoiceOption[]) {
+    // Hide text input
+    this.inputContainer.setVisible(false);
+    if (this.answerInput) {
+      this.answerInput.setVisible(false);
+    }
+
+    // Destroy previous multiple choice if exists
+    if (this.multipleChoice) {
+      this.multipleChoice.destroy();
+    }
+
+    // Create multiple choice component
+    this.multipleChoice = new MultipleChoice(this, 400, 380, {
+      options,
+      width: 700,
+      height: 55,
+      spacing: 10,
+      fontSize: '20px',
+      showLabels: true,
+      onSelect: (optionId: string) => {
+        this.socket.emit('ay:submit-answer', { answer: optionId });
+        this.hasAnswered = true;
+        this.multipleChoice?.setDisabled(true);
+        this.showSubmittedState();
+      },
+    });
   }
 
   private showSubmittedState() {

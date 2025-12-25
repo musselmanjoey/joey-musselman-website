@@ -25,7 +25,7 @@ const VIEWPORTS = {
 // Define phases and roles for each game
 const GAME_CONFIGS: Record<string, { phases: string[]; roles: string[] }> = {
   'about-you': {
-    phases: ['lobby', 'answering', 'reveal', 'round-summary', 'game-over'],
+    phases: ['lobby', 'answering', 'answering-mc', 'reveal', 'round-summary', 'game-over'],
     roles: ['mc', 'guesser'],
   },
   // Add more games here

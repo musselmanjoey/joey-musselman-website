@@ -12,7 +12,7 @@ export interface GameMockData {
 
 // Game phase definitions
 const GAME_PHASES: Record<string, string[]> = {
-  'about-you': ['lobby', 'answering', 'reveal', 'round-summary', 'game-over'],
+  'about-you': ['lobby', 'answering', 'answering-mc', 'reveal', 'round-summary', 'game-over'],
   'board-game': ['lobby', 'rolling', 'moving', 'minigame', 'results'],
   'caption-contest': ['lobby', 'captioning', 'voting', 'results', 'game-over'],
 };
@@ -82,6 +82,52 @@ const ABOUT_YOU_MOCK: Record<string, Record<string, GameMockData>> = {
       timer: 45,
       hasAnswered: false,
       myScore: 0,
+    },
+  },
+  'answering-mc': {
+    mc: {
+      phase: 'answering',
+      isMainCharacter: true,
+      mainCharacterId: 'player-1',
+      mainCharacterName: 'Alice',
+      question: {
+        id: 'q5',
+        type: 'multiple',
+        prompt: "What's your favorite season?",
+        options: [
+          { id: 'spring', text: 'Spring' },
+          { id: 'summer', text: 'Summer' },
+          { id: 'fall', text: 'Fall' },
+          { id: 'winter', text: 'Winter' },
+        ],
+      },
+      questionNumber: 5,
+      totalQuestions: 8,
+      timer: 45,
+      hasAnswered: false,
+      myScore: 2,
+    },
+    guesser: {
+      phase: 'answering',
+      isMainCharacter: false,
+      mainCharacterId: 'player-1',
+      mainCharacterName: 'Alice',
+      question: {
+        id: 'q5',
+        type: 'multiple',
+        prompt: "What's your favorite season?",
+        options: [
+          { id: 'spring', text: 'Spring' },
+          { id: 'summer', text: 'Summer' },
+          { id: 'fall', text: 'Fall' },
+          { id: 'winter', text: 'Winter' },
+        ],
+      },
+      questionNumber: 5,
+      totalQuestions: 8,
+      timer: 45,
+      hasAnswered: false,
+      myScore: 1,
     },
   },
   reveal: {

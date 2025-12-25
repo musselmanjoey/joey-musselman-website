@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
 import { BoardGameState, BoardPosition, BoardMovement } from '../../types';
 import { gameEvents } from '../../gameEvents';
+import { MultipleChoice } from '../ui';
 
 const BOARD_COLORS = {
   background: 0xffffff,
@@ -28,6 +29,7 @@ export class BoardGameScene extends Phaser.Scene {
   private standingsContainer!: Phaser.GameObjects.Container;
   private playerTokens: Map<string, Phaser.GameObjects.Container> = new Map();
   private boardSpaces: Phaser.GameObjects.Rectangle[] = [];
+  private triviaMultipleChoice?: MultipleChoice;
 
   // Player controller specific
   private myPositionText!: Phaser.GameObjects.Text;
@@ -369,7 +371,7 @@ export class BoardGameScene extends Phaser.Scene {
 
     // Round results
     this.socket.on('bg:round-results', (data: { standings: BoardPosition[]; winner?: { name: string } }) => {
-      this.triviaContainer.setVisible(false);
+      this.hideTriviaUI();
 
       if (this.isHost) {
         this.updateStandings(data.standings);
@@ -440,7 +442,7 @@ export class BoardGameScene extends Phaser.Scene {
             this.statusText.setText(`You rolled ${state.myRoll}! Waiting for others...`);
           }
         }
-        this.triviaContainer.setVisible(false);
+        this.hideTriviaUI();
         break;
       case 'moving':
         this.statusText.setText('Moving pieces...');
@@ -462,12 +464,12 @@ export class BoardGameScene extends Phaser.Scene {
             });
           } else if (state.hasAnswered) {
             this.statusText.setText('Answer submitted! Waiting...');
-            this.triviaContainer.setVisible(false);
+            this.hideTriviaUI();
           }
         }
         break;
       case 'results':
-        this.triviaContainer.setVisible(false);
+        this.hideTriviaUI();
         if (this.isHost) {
           this.statusText.setText('Round complete! Starting next round...');
         }
@@ -651,40 +653,45 @@ export class BoardGameScene extends Phaser.Scene {
     });
   }
 
+  private hideTriviaUI() {
+    this.triviaContainer.setVisible(false);
+    if (this.triviaMultipleChoice) {
+      this.triviaMultipleChoice.destroy();
+      this.triviaMultipleChoice = undefined;
+    }
+  }
+
   private showPlayerTrivia(data: { question: string; options: { id: string; text: string }[]; timeLimit: number }) {
+    // Clean up previous trivia UI
     this.triviaContainer.removeAll(true);
+    if (this.triviaMultipleChoice) {
+      this.triviaMultipleChoice.destroy();
+      this.triviaMultipleChoice = undefined;
+    }
+
     this.triviaContainer.setVisible(true);
     this.rollButton.setVisible(false);
 
     this.statusText.setText('TRIVIA! Look at the TV!');
 
-    // Big touch-friendly answer buttons
-    data.options.forEach((opt, i) => {
-      const y = -80 + i * 70;
-
-      const optBg = this.add.rectangle(0, y, 340, 60, BOARD_COLORS.boardBg);
-      optBg.setStrokeStyle(4, BOARD_COLORS.border);
-      optBg.setInteractive({ useHandCursor: true });
-
-      const optText = this.add.text(0, y, `${String.fromCharCode(65 + i)}. ${opt.text}`, {
-        fontSize: '18px',
-        color: '#171717',
-        fontStyle: 'bold',
-        wordWrap: { width: 320 },
-      }).setOrigin(0.5);
-
-      optBg.on('pointerover', () => optBg.setStrokeStyle(4, BOARD_COLORS.accent));
-      optBg.on('pointerout', () => optBg.setStrokeStyle(4, BOARD_COLORS.border));
-      optBg.on('pointerdown', () => {
-        optBg.setScale(0.95);
-        optBg.setFillStyle(0x22c55e);
-        this.socket.emit('bg:submit-answer', { answerId: opt.id });
-        this.triviaContainer.setVisible(false);
+    // Use shared MultipleChoice component
+    this.triviaMultipleChoice = new MultipleChoice(this, 400, 350, {
+      options: data.options,
+      width: 340,
+      height: 60,
+      spacing: 12,
+      fontSize: '18px',
+      showLabels: true,
+      onSelect: (optionId: string) => {
+        this.socket.emit('bg:submit-answer', { answerId: optionId });
+        this.triviaMultipleChoice?.setDisabled(true);
         this.statusText.setText('Answer submitted!');
-      });
-      optBg.on('pointerup', () => optBg.setScale(1));
 
-      this.triviaContainer.add([optBg, optText]);
+        // Hide after short delay
+        this.time.delayedCall(500, () => {
+          this.triviaMultipleChoice?.setVisible(false);
+        });
+      },
     });
   }
 
@@ -738,5 +745,9 @@ export class BoardGameScene extends Phaser.Scene {
   destroy() {
     this.playerTokens.clear();
     this.boardSpaces = [];
+    if (this.triviaMultipleChoice) {
+      this.triviaMultipleChoice.destroy();
+      this.triviaMultipleChoice = undefined;
+    }
   }
 }
