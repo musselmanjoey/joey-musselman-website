@@ -72,6 +72,14 @@ const COLORS = {
   timerBg: 0x1f2937,
 };
 
+// Portrait dimensions for game scenes (mobile-optimized)
+const GAME_WIDTH = 400;
+const GAME_HEIGHT = 700;
+
+// Original world dimensions to restore on exit
+const WORLD_WIDTH = 800;
+const WORLD_HEIGHT = 600;
+
 export class AboutYouScene extends Phaser.Scene {
   private socket!: Socket;
   private playerId!: string;
@@ -119,9 +127,12 @@ export class AboutYouScene extends Phaser.Scene {
     this.playerName = this.registry.get('playerName') || 'Player';
 
     if (!this.socket) {
-      this.add.text(400, 300, 'Connection error', { fontSize: '24px', color: '#ff0000' }).setOrigin(0.5);
+      this.add.text(200, 350, 'Connection error', { fontSize: '24px', color: '#ff0000' }).setOrigin(0.5);
       return;
     }
+
+    // Resize to portrait mode for better mobile experience
+    this.scale.resize(GAME_WIDTH, GAME_HEIGHT);
 
     // Reset state
     this.phase = 'lobby';
@@ -134,59 +145,59 @@ export class AboutYouScene extends Phaser.Scene {
   }
 
   private createUI() {
-    // Background
-    this.add.rectangle(400, 300, 800, 600, COLORS.background);
+    // Background - full portrait canvas
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.background);
 
     // Corner badges (small, unobtrusive)
     this.createCornerBadges();
 
-    // Timer container (HERO - centered, prominent)
-    this.timerContainer = this.add.container(400, 70);
+    // Timer container (HERO - centered, prominent, LARGE for accessibility)
+    this.timerContainer = this.add.container(GAME_WIDTH / 2, 70);
     this.timerBg = this.add.circle(0, 0, 50, COLORS.timerBg);
     this.timerText = this.add.text(0, 0, '', {
-      fontSize: '36px',
+      fontSize: '48px',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     this.timerContainer.add([this.timerBg, this.timerText]);
     this.timerContainer.setVisible(false);
 
-    // Content area - centered vertically
-    this.contentContainer = this.add.container(400, 210);
+    // Content area - positioned for question display
+    this.contentContainer = this.add.container(GAME_WIDTH / 2, 200);
 
     // Status text at bottom
-    this.statusText = this.add.text(400, 570, '', {
-      fontSize: '16px',
+    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, '', {
+      fontSize: '18px',
       color: '#9ca3af',
       align: 'center',
-      wordWrap: { width: 700 },
+      wordWrap: { width: GAME_WIDTH - 40 },
     }).setOrigin(0.5);
 
     // Input area - positioned for thumb reach
     this.createInputUI();
 
     // Result area
-    this.resultContainer = this.add.container(400, 280);
+    this.resultContainer = this.add.container(GAME_WIDTH / 2, 320);
     this.resultContainer.setVisible(false);
 
     // Summary area
-    this.summaryContainer = this.add.container(400, 280);
+    this.summaryContainer = this.add.container(GAME_WIDTH / 2, 350);
     this.summaryContainer.setVisible(false);
 
     // Leave button - small, bottom corner
-    this.createButton(720, 570, 'Leave', () => {
+    this.createButton(GAME_WIDTH - 70, GAME_HEIGHT - 50, 'Leave', () => {
       this.socket.emit('game:leave');
-    }, COLORS.danger, 120, 40, '14px');
+    }, COLORS.danger, 100, 36, '14px');
   }
 
   private createCornerBadges() {
-    const pad = 16;
+    const pad = 12;
 
     // Progress badge (top-left) - "1/8"
     this.progressBadge = this.add.container(pad, pad);
-    const progBg = this.add.rectangle(0, 0, 60, 28, COLORS.panel, 0.9).setOrigin(0, 0);
-    this.progressText = this.add.text(30, 14, '', {
-      fontSize: '14px',
+    const progBg = this.add.rectangle(0, 0, 55, 26, COLORS.panel, 0.9).setOrigin(0, 0);
+    this.progressText = this.add.text(27, 13, '', {
+      fontSize: '13px',
       color: '#6b7280',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -194,10 +205,10 @@ export class AboutYouScene extends Phaser.Scene {
     this.progressBadge.setVisible(false);
 
     // Score badge (top-right)
-    this.scoreBadge = this.add.container(800 - pad, pad);
-    const scoreBg = this.add.rectangle(0, 0, 70, 28, COLORS.success, 0.9).setOrigin(1, 0);
-    this.scoreValueText = this.add.text(-35, 14, '', {
-      fontSize: '14px',
+    this.scoreBadge = this.add.container(GAME_WIDTH - pad, pad);
+    const scoreBg = this.add.rectangle(0, 0, 60, 26, COLORS.success, 0.9).setOrigin(1, 0);
+    this.scoreValueText = this.add.text(-30, 13, '', {
+      fontSize: '13px',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -206,19 +217,22 @@ export class AboutYouScene extends Phaser.Scene {
   }
 
   private createInputUI() {
-    this.inputContainer = this.add.container(400, 400);
+    // Position input area in lower portion of screen for thumb reach
+    this.inputContainer = this.add.container(GAME_WIDTH / 2, 480);
 
-    // Compact textarea for mobile
+    const inputWidth = GAME_WIDTH - 40; // 20px padding each side
+
+    // Large textarea for mobile - bigger text for accessibility
     const inputHtml = `
       <textarea
         id="answer-input"
         placeholder="Type your answer..."
         maxlength="200"
         style="
-          width: 720px;
-          height: 100px;
+          width: ${inputWidth}px;
+          height: 120px;
           padding: 16px;
-          font-size: 20px;
+          font-size: 22px;
           border-radius: 16px;
           border: 3px solid #dc2626;
           background: #ffffff;
@@ -231,17 +245,17 @@ export class AboutYouScene extends Phaser.Scene {
         "
       ></textarea>
     `;
-    this.answerInput = this.add.dom(0, -50).createFromHTML(inputHtml);
+    this.answerInput = this.add.dom(0, -60).createFromHTML(inputHtml);
 
-    // Full-width submit button
-    this.submitButton = this.createButton(0, 45, 'SUBMIT', () => {
+    // Full-width submit button - big and easy to tap
+    this.submitButton = this.createButton(0, 40, 'SUBMIT', () => {
       const textarea = document.getElementById('answer-input') as HTMLTextAreaElement;
       if (textarea && textarea.value.trim()) {
         this.socket.emit('ay:submit-answer', { answer: textarea.value.trim() });
         this.hasAnswered = true;
         this.showSubmittedState();
       }
-    }, COLORS.accent, 720, 60, '24px');
+    }, COLORS.accent, inputWidth, 70, '28px');
 
     this.inputContainer.add([this.answerInput, this.submitButton]);
     this.inputContainer.setVisible(false);
@@ -419,45 +433,45 @@ export class AboutYouScene extends Phaser.Scene {
 
   private showLobby(data: PhaseData) {
     // Center content for lobby
-    this.contentContainer.setY(280);
+    this.contentContainer.setY(320);
 
     if (this.isMainCharacter) {
-      const star = this.add.text(0, -80, '⭐', { fontSize: '72px' }).setOrigin(0.5);
+      const star = this.add.text(0, -100, '⭐', { fontSize: '80px' }).setOrigin(0.5);
       const title = this.add.text(0, 20, "You're the\nMain Character!", {
-        fontSize: '32px',
+        fontSize: '36px',
         color: '#fbbf24',
         fontStyle: 'bold',
         align: 'center',
-        lineSpacing: 8,
+        lineSpacing: 10,
       }).setOrigin(0.5);
-      const subtitle = this.add.text(0, 110, 'Answer honestly.\nOthers will try to match!', {
-        fontSize: '18px',
+      const subtitle = this.add.text(0, 130, 'Answer honestly.\nOthers will try to match!', {
+        fontSize: '20px',
         color: '#6b7280',
         align: 'center',
-        lineSpacing: 4,
+        lineSpacing: 6,
       }).setOrigin(0.5);
       this.contentContainer.add([star, title, subtitle]);
     } else if (data.mainCharacterName) {
-      const label = this.add.text(0, -40, 'Main Character', {
-        fontSize: '16px',
+      const label = this.add.text(0, -60, 'Main Character', {
+        fontSize: '18px',
         color: '#6b7280',
       }).setOrigin(0.5);
-      const title = this.add.text(0, 10, data.mainCharacterName, {
-        fontSize: '42px',
+      const title = this.add.text(0, 0, data.mainCharacterName, {
+        fontSize: '48px',
         color: '#fbbf24',
         fontStyle: 'bold',
       }).setOrigin(0.5);
       const hint = this.add.text(0, 80, 'Try to match their answers!', {
-        fontSize: '18px',
+        fontSize: '22px',
         color: '#6b7280',
       }).setOrigin(0.5);
       this.contentContainer.add([label, title, hint]);
     } else {
       const waiting = this.add.text(0, 0, 'Waiting for host\nto select\nMain Character...', {
-        fontSize: '24px',
+        fontSize: '26px',
         color: '#9ca3af',
         align: 'center',
-        lineSpacing: 8,
+        lineSpacing: 10,
       }).setOrigin(0.5);
       this.contentContainer.add(waiting);
     }
@@ -468,31 +482,31 @@ export class AboutYouScene extends Phaser.Scene {
   private showAnswering(data: PhaseData) {
     this.hasAnswered = false;
 
-    // Reset content container position for answering
-    this.contentContainer.setY(180);
+    // Position content container for question display
+    this.contentContainer.setY(200);
 
     if (data.timer) {
       this.updateTimer(data.timer);
     }
 
-    // Question prompt - prominent
+    // Question prompt - LARGE and prominent for accessibility
     const questionPrompt = data.question?.prompt || 'Question loading...';
     const questionDisplay = this.add.text(0, 0, questionPrompt, {
-      fontSize: '26px',
+      fontSize: '28px',
       color: '#171717',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: 720 },
-      lineSpacing: 6,
+      wordWrap: { width: GAME_WIDTH - 40 },
+      lineSpacing: 8,
     }).setOrigin(0.5);
 
     this.contentContainer.add(questionDisplay);
 
     // Role hint below question
-    const hintY = 55;
+    const hintY = 70;
     if (this.isMainCharacter) {
       const hint = this.add.text(0, hintY, '⭐ Answer honestly!', {
-        fontSize: '18px',
+        fontSize: '20px',
         color: '#fbbf24',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -542,13 +556,13 @@ export class AboutYouScene extends Phaser.Scene {
       this.multipleChoice.destroy();
     }
 
-    // Create multiple choice component - positioned higher to avoid leave button
-    this.multipleChoice = new MultipleChoice(this, 400, 320, {
+    // Create multiple choice component - big buttons for accessibility
+    this.multipleChoice = new MultipleChoice(this, GAME_WIDTH / 2, 380, {
       options,
-      width: 700,
-      height: 50,
-      spacing: 8,
-      fontSize: '18px',
+      width: GAME_WIDTH - 40,
+      height: 60,
+      spacing: 12,
+      fontSize: '20px',
       showLabels: true,
       onSelect: (optionId: string) => {
         this.socket.emit('ay:submit-answer', { answer: optionId });
@@ -586,20 +600,23 @@ export class AboutYouScene extends Phaser.Scene {
   private showReveal(data: PhaseData) {
     this.timerContainer.setVisible(false);
     this.resultContainer.removeAll(true);
+    this.resultContainer.setY(280);
+
+    const contentWidth = GAME_WIDTH - 40;
 
     // MC's answer - hero element
-    const answerLabel = this.add.text(0, -100, `${this.mainCharacterName}'s answer`, {
-      fontSize: '16px',
+    const answerLabel = this.add.text(0, -120, `${this.mainCharacterName}'s answer`, {
+      fontSize: '18px',
       color: '#6b7280',
     }).setOrigin(0.5);
 
-    const answerBg = this.add.rectangle(0, -40, 720, 80, COLORS.gold);
+    const answerBg = this.add.rectangle(0, -50, contentWidth, 90, COLORS.gold);
 
-    const answerText = this.add.text(0, -40, data.mainCharacterAnswer || '', {
-      fontSize: '24px',
+    const answerText = this.add.text(0, -50, data.mainCharacterAnswer || '', {
+      fontSize: '26px',
       color: '#171717',
       fontStyle: 'bold',
-      wordWrap: { width: 680 },
+      wordWrap: { width: contentWidth - 20 },
       align: 'center',
     }).setOrigin(0.5);
 
@@ -610,25 +627,25 @@ export class AboutYouScene extends Phaser.Scene {
       const myGuess = data.guesses?.find(g => g.playerId === this.playerId);
       const wasCorrect = data.matches?.includes(this.playerId) || data.approvedGuesses?.includes(this.playerId);
 
-      const resultY = 70;
+      const resultY = 80;
 
-      const resultBg = this.add.rectangle(0, resultY, 720, 100, wasCorrect ? COLORS.success : COLORS.panel);
+      const resultBg = this.add.rectangle(0, resultY, contentWidth, 120, wasCorrect ? COLORS.success : COLORS.panel);
 
-      const resultIcon = this.add.text(0, resultY - 25, wasCorrect ? '✓' : '✗', {
-        fontSize: '32px',
+      const resultIcon = this.add.text(0, resultY - 30, wasCorrect ? '✓' : '✗', {
+        fontSize: '40px',
         color: wasCorrect ? '#ffffff' : '#6b7280',
         fontStyle: 'bold',
       }).setOrigin(0.5);
 
       const resultLabel = this.add.text(0, resultY + 10, wasCorrect ? 'You matched!' : 'Your guess:', {
-        fontSize: '14px',
+        fontSize: '16px',
         color: wasCorrect ? 'rgba(255,255,255,0.8)' : '#6b7280',
       }).setOrigin(0.5);
 
-      const guessText = this.add.text(0, resultY + 35, myGuess?.guess || 'No answer', {
-        fontSize: '18px',
+      const guessText = this.add.text(0, resultY + 40, myGuess?.guess || 'No answer', {
+        fontSize: '20px',
         color: wasCorrect ? '#ffffff' : '#171717',
-        wordWrap: { width: 680 },
+        wordWrap: { width: contentWidth - 20 },
         align: 'center',
       }).setOrigin(0.5);
 
@@ -643,8 +660,8 @@ export class AboutYouScene extends Phaser.Scene {
       const correctCount = data.matches?.length || 0;
       const totalGuessers = data.guesses?.length || 0;
 
-      const statsText = this.add.text(0, 70, `${correctCount} of ${totalGuessers} matched!`, {
-        fontSize: '28px',
+      const statsText = this.add.text(0, 80, `${correctCount} of ${totalGuessers} matched!`, {
+        fontSize: '32px',
         color: '#171717',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -658,15 +675,18 @@ export class AboutYouScene extends Phaser.Scene {
 
   private showRoundSummary(data: PhaseData) {
     this.summaryContainer.removeAll(true);
+    this.summaryContainer.setY(300);
 
-    const title = this.add.text(0, -130, `Question ${data.questionNumber}`, {
-      fontSize: '28px',
+    const contentWidth = GAME_WIDTH - 40;
+
+    const title = this.add.text(0, -150, `Question ${data.questionNumber}`, {
+      fontSize: '32px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const subtitle = this.add.text(0, -95, 'Complete!', {
-      fontSize: '18px',
+    const subtitle = this.add.text(0, -110, 'Complete!', {
+      fontSize: '20px',
       color: '#6b7280',
     }).setOrigin(0.5);
 
@@ -676,26 +696,26 @@ export class AboutYouScene extends Phaser.Scene {
     if (data.scores) {
       const guessers = data.scores.filter(s => !s.isMainCharacter);
 
-      guessers.slice(0, 4).forEach((entry, i) => {
-        const y = -40 + (i * 50);
+      guessers.slice(0, 5).forEach((entry, i) => {
+        const y = -50 + (i * 55);
         const isMe = entry.id === this.playerId;
 
-        const rowBg = this.add.rectangle(0, y, 720, 44, isMe ? 0xfef3c7 : COLORS.panel);
+        const rowBg = this.add.rectangle(0, y, contentWidth, 48, isMe ? 0xfef3c7 : COLORS.panel);
 
-        const rank = this.add.text(-340, y, `${i + 1}`, {
-          fontSize: '18px',
+        const rank = this.add.text(-contentWidth/2 + 20, y, `${i + 1}`, {
+          fontSize: '20px',
           color: '#9ca3af',
           fontStyle: 'bold',
         }).setOrigin(0, 0.5);
 
-        const name = this.add.text(-310, y, entry.name, {
-          fontSize: '20px',
+        const name = this.add.text(-contentWidth/2 + 50, y, entry.name, {
+          fontSize: '22px',
           color: '#171717',
           fontStyle: isMe ? 'bold' : 'normal',
         }).setOrigin(0, 0.5);
 
-        const score = this.add.text(340, y, `${entry.score}`, {
-          fontSize: '22px',
+        const score = this.add.text(contentWidth/2 - 20, y, `${entry.score}`, {
+          fontSize: '24px',
           color: '#22c55e',
           fontStyle: 'bold',
         }).setOrigin(1, 0.5);
@@ -710,33 +730,68 @@ export class AboutYouScene extends Phaser.Scene {
 
   private showGameOver(data: PhaseData) {
     this.summaryContainer.removeAll(true);
+    // Center in portrait canvas
+    this.summaryContainer.setY(320);
 
-    const trophy = this.add.text(0, -110, '🏆', { fontSize: '64px' }).setOrigin(0.5);
+    const contentWidth = GAME_WIDTH - 40;
 
-    const title = this.add.text(0, -30, 'GAME OVER', {
-      fontSize: '32px',
+    // Trophy - big and prominent
+    const trophy = this.add.text(0, -160, '🏆', { fontSize: '80px' }).setOrigin(0.5);
+
+    const title = this.add.text(0, -60, 'GAME OVER', {
+      fontSize: '36px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const subtitle = this.add.text(0, 10, `Who knows ${data.mainCharacterName} best?`, {
-      fontSize: '16px',
+    const subtitle = this.add.text(0, -15, `Who knows ${data.mainCharacterName} best?`, {
+      fontSize: '18px',
       color: '#6b7280',
     }).setOrigin(0.5);
 
-    const winnerName = this.add.text(0, 60, data.winner?.name || 'Nobody', {
-      fontSize: '36px',
+    // Winner highlight box
+    const winnerBg = this.add.rectangle(0, 70, contentWidth, 100, COLORS.gold, 0.2);
+
+    const winnerName = this.add.text(0, 50, data.winner?.name || 'Nobody', {
+      fontSize: '42px',
       color: '#171717',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const winnerScore = this.add.text(0, 105, `${data.winner?.score || 0} correct`, {
-      fontSize: '20px',
+    const winnerScore = this.add.text(0, 100, `${data.winner?.score || 0} correct`, {
+      fontSize: '24px',
       color: '#22c55e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.summaryContainer.add([trophy, title, subtitle, winnerName, winnerScore]);
+    this.summaryContainer.add([trophy, title, subtitle, winnerBg, winnerName, winnerScore]);
+
+    // Show final scores if available
+    if (data.finalScores && data.finalScores.length > 1) {
+      const guessers = data.finalScores.filter(s => !s.isMainCharacter);
+      const otherPlayers = guessers.slice(1, 4); // Top 2-4 runners up
+
+      otherPlayers.forEach((entry, i) => {
+        const y = 170 + (i * 45);
+        const rowBg = this.add.rectangle(0, y, contentWidth - 40, 40, COLORS.panel);
+        const rank = this.add.text(-contentWidth/2 + 40, y, `${i + 2}`, {
+          fontSize: '18px',
+          color: '#9ca3af',
+          fontStyle: 'bold',
+        }).setOrigin(0, 0.5);
+        const name = this.add.text(-contentWidth/2 + 70, y, entry.name, {
+          fontSize: '20px',
+          color: '#171717',
+        }).setOrigin(0, 0.5);
+        const score = this.add.text(contentWidth/2 - 40, y, `${entry.score}`, {
+          fontSize: '20px',
+          color: '#22c55e',
+          fontStyle: 'bold',
+        }).setOrigin(1, 0.5);
+        this.summaryContainer.add([rowBg, rank, name, score]);
+      });
+    }
+
     this.summaryContainer.setVisible(true);
     this.statusText.setText('Thanks for playing!');
   }
@@ -745,6 +800,8 @@ export class AboutYouScene extends Phaser.Scene {
 
   private returnToLobby() {
     this.cleanupSocketListeners();
+    // Resize back to world dimensions before returning
+    this.scale.resize(WORLD_WIDTH, WORLD_HEIGHT);
     this.scene.stop();
     this.scene.resume('LobbyScene');
   }
