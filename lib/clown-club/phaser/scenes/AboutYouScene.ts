@@ -132,7 +132,9 @@ export class AboutYouScene extends Phaser.Scene {
     }
 
     // Resize to portrait mode for better mobile experience
-    this.scale.resize(GAME_WIDTH, GAME_HEIGHT);
+    // Use setGameSize + refresh to properly update the canvas with FIT mode
+    this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
+    this.scale.refresh();
 
     // Reset state
     this.phase = 'lobby';
@@ -165,12 +167,12 @@ export class AboutYouScene extends Phaser.Scene {
     // Content area - positioned for question display
     this.contentContainer = this.add.container(GAME_WIDTH / 2, 200);
 
-    // Status text at bottom
-    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, '', {
-      fontSize: '18px',
+    // Status text at bottom (moved up to ensure visibility)
+    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 90, '', {
+      fontSize: '16px',
       color: '#9ca3af',
       align: 'center',
-      wordWrap: { width: GAME_WIDTH - 40 },
+      wordWrap: { width: GAME_WIDTH - 60 },
     }).setOrigin(0.5);
 
     // Input area - positioned for thumb reach
@@ -184,10 +186,10 @@ export class AboutYouScene extends Phaser.Scene {
     this.summaryContainer = this.add.container(GAME_WIDTH / 2, 350);
     this.summaryContainer.setVisible(false);
 
-    // Leave button - small, bottom corner
-    this.createButton(GAME_WIDTH - 70, GAME_HEIGHT - 50, 'Leave', () => {
+    // Leave button - small, bottom right (moved up for visibility)
+    this.createButton(GAME_WIDTH - 60, GAME_HEIGHT - 40, 'Leave', () => {
       this.socket.emit('game:leave');
-    }, COLORS.danger, 100, 36, '14px');
+    }, COLORS.danger, 80, 32, '12px');
   }
 
   private createCornerBadges() {
@@ -218,9 +220,9 @@ export class AboutYouScene extends Phaser.Scene {
 
   private createInputUI() {
     // Position input area in lower portion of screen for thumb reach
-    this.inputContainer = this.add.container(GAME_WIDTH / 2, 480);
+    this.inputContainer = this.add.container(GAME_WIDTH / 2, 440);
 
-    const inputWidth = GAME_WIDTH - 40; // 20px padding each side
+    const inputWidth = GAME_WIDTH - 50; // 25px padding each side
 
     // Large textarea for mobile - bigger text for accessibility
     const inputHtml = `
@@ -248,14 +250,14 @@ export class AboutYouScene extends Phaser.Scene {
     this.answerInput = this.add.dom(0, -60).createFromHTML(inputHtml);
 
     // Full-width submit button - big and easy to tap
-    this.submitButton = this.createButton(0, 40, 'SUBMIT', () => {
+    this.submitButton = this.createButton(0, 35, 'SUBMIT', () => {
       const textarea = document.getElementById('answer-input') as HTMLTextAreaElement;
       if (textarea && textarea.value.trim()) {
         this.socket.emit('ay:submit-answer', { answer: textarea.value.trim() });
         this.hasAnswered = true;
         this.showSubmittedState();
       }
-    }, COLORS.accent, inputWidth, 70, '28px');
+    }, COLORS.accent, inputWidth, 60, '24px');
 
     this.inputContainer.add([this.answerInput, this.submitButton]);
     this.inputContainer.setVisible(false);
@@ -436,33 +438,33 @@ export class AboutYouScene extends Phaser.Scene {
     this.contentContainer.setY(320);
 
     if (this.isMainCharacter) {
-      const star = this.add.text(0, -100, '⭐', { fontSize: '80px' }).setOrigin(0.5);
-      const title = this.add.text(0, 20, "You're the\nMain Character!", {
-        fontSize: '36px',
+      const star = this.add.text(0, -100, '⭐', { fontSize: '64px' }).setOrigin(0.5);
+      const title = this.add.text(0, 10, "You're the\nMain Character!", {
+        fontSize: '28px',
         color: '#fbbf24',
         fontStyle: 'bold',
         align: 'center',
-        lineSpacing: 10,
+        lineSpacing: 8,
       }).setOrigin(0.5);
-      const subtitle = this.add.text(0, 130, 'Answer honestly.\nOthers will try to match!', {
-        fontSize: '20px',
+      const subtitle = this.add.text(0, 110, 'Answer honestly.\nThey will guess!', {
+        fontSize: '16px',
         color: '#6b7280',
         align: 'center',
-        lineSpacing: 6,
+        lineSpacing: 4,
       }).setOrigin(0.5);
       this.contentContainer.add([star, title, subtitle]);
     } else if (data.mainCharacterName) {
       const label = this.add.text(0, -60, 'Main Character', {
-        fontSize: '18px',
+        fontSize: '16px',
         color: '#6b7280',
       }).setOrigin(0.5);
       const title = this.add.text(0, 0, data.mainCharacterName, {
-        fontSize: '48px',
+        fontSize: '44px',
         color: '#fbbf24',
         fontStyle: 'bold',
       }).setOrigin(0.5);
-      const hint = this.add.text(0, 80, 'Try to match their answers!', {
-        fontSize: '22px',
+      const hint = this.add.text(0, 80, 'Match their answers!', {
+        fontSize: '20px',
         color: '#6b7280',
       }).setOrigin(0.5);
       this.contentContainer.add([label, title, hint]);
@@ -489,15 +491,15 @@ export class AboutYouScene extends Phaser.Scene {
       this.updateTimer(data.timer);
     }
 
-    // Question prompt - LARGE and prominent for accessibility
+    // Question prompt - sized to prevent edge clipping on mobile
     const questionPrompt = data.question?.prompt || 'Question loading...';
     const questionDisplay = this.add.text(0, 0, questionPrompt, {
-      fontSize: '28px',
+      fontSize: '20px',
       color: '#171717',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: GAME_WIDTH - 40 },
-      lineSpacing: 8,
+      wordWrap: { width: GAME_WIDTH - 100 },
+      lineSpacing: 4,
     }).setOrigin(0.5);
 
     this.contentContainer.add(questionDisplay);
@@ -556,13 +558,13 @@ export class AboutYouScene extends Phaser.Scene {
       this.multipleChoice.destroy();
     }
 
-    // Create multiple choice component - big buttons for accessibility
-    this.multipleChoice = new MultipleChoice(this, GAME_WIDTH / 2, 380, {
+    // Create multiple choice component - compact to fit all 4 options on mobile
+    this.multipleChoice = new MultipleChoice(this, GAME_WIDTH / 2, 310, {
       options,
-      width: GAME_WIDTH - 40,
-      height: 60,
-      spacing: 12,
-      fontSize: '20px',
+      width: GAME_WIDTH - 50,
+      height: 50,
+      spacing: 6,
+      fontSize: '16px',
       showLabels: true,
       onSelect: (optionId: string) => {
         this.socket.emit('ay:submit-answer', { answer: optionId });
@@ -801,7 +803,8 @@ export class AboutYouScene extends Phaser.Scene {
   private returnToLobby() {
     this.cleanupSocketListeners();
     // Resize back to world dimensions before returning
-    this.scale.resize(WORLD_WIDTH, WORLD_HEIGHT);
+    this.scale.setGameSize(WORLD_WIDTH, WORLD_HEIGHT);
+    this.scale.refresh();
     this.scene.stop();
     this.scene.resume('LobbyScene');
   }
