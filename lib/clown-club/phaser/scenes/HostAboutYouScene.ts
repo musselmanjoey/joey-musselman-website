@@ -552,11 +552,13 @@ export class HostAboutYouScene extends Phaser.Scene {
 
       // Status/button - add last so it's on top
       if (isExactMatch) {
-        const check = this.add.text(280, y, '✓ Exact Match', {
-          fontSize: '16px',
-          color: '#22c55e',
+        const check = this.add.text(300, y, '✓ Match', {
+          fontSize: '14px',
+          color: '#ffffff',
           fontStyle: 'bold',
-        }).setOrigin(0, 0.5);
+          backgroundColor: '#22c55e',
+          padding: { x: 8, y: 4 },
+        }).setOrigin(0.5);
         this.revealContainer.add(check);
       } else if (approved.includes(g.playerId)) {
         const unapproveBtn = this.createSmallButton(300, y, 'Unapprove', () => {

@@ -542,13 +542,13 @@ export class AboutYouScene extends Phaser.Scene {
       this.multipleChoice.destroy();
     }
 
-    // Create multiple choice component
-    this.multipleChoice = new MultipleChoice(this, 400, 380, {
+    // Create multiple choice component - positioned higher to avoid leave button
+    this.multipleChoice = new MultipleChoice(this, 400, 320, {
       options,
       width: 700,
-      height: 55,
-      spacing: 10,
-      fontSize: '20px',
+      height: 50,
+      spacing: 8,
+      fontSize: '18px',
       showLabels: true,
       onSelect: (optionId: string) => {
         this.socket.emit('ay:submit-answer', { answer: optionId });
