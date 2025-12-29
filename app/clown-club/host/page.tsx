@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
 import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 import { Socket } from 'socket.io-client';
+import { gameEvents } from '@/lib/clown-club/gameEvents';
+import { HostPlaybackControls } from '@/components/clown-club/record-store/HostPlaybackControls';
 
 // Dynamic import for Phaser (client-only)
 const HostPhaserWrapper = dynamic(
@@ -30,6 +32,7 @@ export default function HostPage() {
   const [roomCode] = useState('LOBBY');
   const [playerCount, setPlayerCount] = useState(0);
   const [gameActive, setGameActive] = useState(false);
+  const [showPlaybackControls, setShowPlaybackControls] = useState(false);
 
   useEffect(() => {
     const s = connectSocket();
@@ -83,6 +86,12 @@ export default function HostPage() {
       setIsConnected(false);
     });
 
+    // Listen for DJ Booth click from Phaser scene
+    const handleShowPlayback = () => {
+      setShowPlaybackControls(true);
+    };
+    gameEvents.on('rs:host-playback-controls', handleShowPlayback);
+
     return () => {
       s.off('connect', handleConnected);
       s.off('cc:spectator-joined');
@@ -92,6 +101,7 @@ export default function HostPage() {
       s.off('game:ended');
       s.off('disconnect');
       s.offAny();
+      gameEvents.off('rs:host-playback-controls', handleShowPlayback);
       resetSocket();
     };
   }, [roomCode]);
@@ -133,6 +143,14 @@ export default function HostPage() {
 
       {/* Phaser game display - scene switching handled internally */}
       <HostPhaserWrapper socket={socket} />
+
+      {/* DJ Booth / Playback Controls Overlay */}
+      {showPlaybackControls && (
+        <HostPlaybackControls
+          socket={socket}
+          onClose={() => setShowPlaybackControls(false)}
+        />
+      )}
     </div>
   );
 }

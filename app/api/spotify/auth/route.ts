@@ -12,11 +12,17 @@ export async function GET(request: Request) {
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
 
   if (!clientId || !redirectUri) {
+    console.error('[Spotify Auth] Missing credentials:', {
+      hasClientId: !!clientId,
+      hasRedirectUri: !!redirectUri,
+    });
     return NextResponse.json(
       { error: 'Spotify credentials not configured' },
       { status: 500 }
     );
   }
+
+  console.log('[Spotify Auth] Starting OAuth flow with redirect:', redirectUri);
 
   // Get room code from query params to pass through OAuth flow
   const { searchParams } = new URL(request.url);
