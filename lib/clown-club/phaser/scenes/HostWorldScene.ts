@@ -6,9 +6,6 @@ import {
   createLobbyBackground,
   createGamesRoomBackground,
   createRecordStoreBackground,
-  resolveCharacterSpriteKey,
-  getSpriteScale,
-  getSpritePositions,
 } from '../WorldRenderer';
 import { LobbyTheme, ArcadeTheme, RecordsTheme } from '../ThemeLoader';
 
@@ -40,6 +37,12 @@ interface ObjectData {
   y: number;
   emoji: string;
   label?: string;
+  action?: string;
+  targetZone?: string;
+  gameType?: string;
+  message?: string;
+  width?: number;
+  height?: number;
 }
 
 interface WorldState {
@@ -48,6 +51,42 @@ interface WorldState {
   players: PlayerData[];
   objects: ObjectData[];
 }
+
+// Zone configuration mirroring server's ZoneConfig.js
+// Positions are in player coordinates (800x600)
+const HOST_ZONES: Record<string, { name: string; objects: ObjectData[] }> = {
+  lobby: {
+    name: 'Town Square',
+    objects: [
+      { id: 'door-cafe', type: 'door', x: 189, y: 315, emoji: '', action: 'under-construction', label: 'Cafe', message: 'The Cafe is coming soon! ☕' },
+      { id: 'door-records', type: 'door', x: 407, y: 300, emoji: '', action: 'zone-change', targetZone: 'records', label: 'Records' },
+      { id: 'door-arcade', type: 'door', x: 630, y: 322, emoji: '', action: 'zone-change', targetZone: 'games', label: 'Arcade' },
+    ],
+  },
+  games: {
+    name: 'Game Room',
+    objects: [
+      { id: 'door-lobby', type: 'door', x: 92, y: 376, emoji: '', action: 'zone-change', targetZone: 'lobby', label: 'Exit' },
+      { id: 'arcade-caption', type: 'arcade', x: 249, y: 316, emoji: '', action: 'launch-game', gameType: 'caption-contest', label: 'Caption Contest' },
+      { id: 'arcade-board', type: 'arcade', x: 356, y: 319, emoji: '', action: 'launch-game', gameType: 'board-game', label: 'Board Rush' },
+      { id: 'arcade-about', type: 'arcade', x: 459, y: 319, emoji: '', action: 'launch-game', gameType: 'about-you', label: 'About You' },
+      { id: 'arcade-newlywebs', type: 'arcade', x: 560, y: 316, emoji: '', action: 'under-construction', label: 'Newly Webs', message: 'Newly Webs is coming soon! 🕸️' },
+      { id: 'stats-panel', type: 'info', x: 716, y: 261, emoji: '', action: 'under-construction', label: 'Leaderboard', message: 'Leaderboard coming soon! 📊' },
+    ],
+  },
+  records: {
+    name: 'Record Store',
+    objects: [
+      { id: 'vinyl-browser', type: 'vinyl', x: 97, y: 314, emoji: '', action: 'host-vinyl', label: 'Browse Collection', width: 120, height: 150 },
+      { id: 'door-lobby', type: 'door', x: 241, y: 302, emoji: '', action: 'zone-change', targetZone: 'lobby', label: 'Exit', width: 80, height: 60 },
+      { id: 'dj-booth', type: 'dj', x: 430, y: 312, emoji: '', action: 'host-playback', label: 'DJ Booth', width: 160, height: 120 },
+      { id: 'review-board', type: 'info', x: 653, y: 217, emoji: '', action: 'host-reviews', label: 'Reviews', width: 100, height: 100 },
+    ],
+  },
+};
+
+// Implemented games that can be started
+const IMPLEMENTED_GAMES = ['board-game', 'caption-contest', 'about-you'];
 
 /**
  * HostWorldScene - Spectator view of the world for TV display
@@ -58,18 +97,22 @@ export class HostWorldScene extends Phaser.Scene {
   private players: Map<string, PlayerContainer> = new Map();
   private queuedPlayers: { id: string; name: string }[] = [];
   private queueUI?: Phaser.GameObjects.Container;
-  private startButton?: Phaser.GameObjects.Container;
   private currentZone: string = 'lobby';
-  private zoneTabs?: Phaser.GameObjects.Container;
   private backgroundContainer?: Phaser.GameObjects.Container;
   private objectsContainer?: Phaser.GameObjects.Container;
+  private interactiveAreas: Phaser.GameObjects.Container[] = [];
   private gameActiveData?: { gameType: string };
   private viewGameButton?: Phaser.GameObjects.Container;
-  private selectedGameType?: string; // Which game the host is viewing
+  private selectedGameType?: string;
   private lobbyTheme?: LobbyTheme;
   private arcadeTheme?: ArcadeTheme;
   private recordsTheme?: RecordsTheme;
-  private tvLabel?: Phaser.GameObjects.Text;
+  private hoverLabel?: Phaser.GameObjects.Text;
+  private constructionOverlay?: Phaser.GameObjects.Container;
+
+  // Scale factors: player view is 800x600, host view is 1280x720
+  private static readonly SCALE_X = 1280 / 800;
+  private static readonly SCALE_Y = 720 / 600;
 
   constructor() {
     super('HostWorldScene');
@@ -81,10 +124,9 @@ export class HostWorldScene extends Phaser.Scene {
     this.arcadeTheme = this.registry.get('arcadeTheme');
     this.recordsTheme = this.registry.get('recordsTheme');
     this.players.clear();
+    this.interactiveAreas = [];
     this.currentZone = 'lobby';
     this.gameActiveData = undefined;
-
-    console.log('[HostWorld] Creating scene, socket:', !!this.socket);
 
     // Create containers
     this.backgroundContainer = this.add.container(0, 0);
@@ -92,11 +134,9 @@ export class HostWorldScene extends Phaser.Scene {
     this.objectsContainer = this.add.container(0, 0);
     this.objectsContainer.setDepth(-10);
 
-    // Create zone tabs at top
-    this.createZoneTabs();
-
-    // Create the world background (same as player's LobbyScene)
+    // Create the world background and interactive areas
     this.createBackground();
+    this.createInteractiveAreas();
 
     // Setup socket listeners
     this.setupSocketListeners();
@@ -105,308 +145,202 @@ export class HostWorldScene extends Phaser.Scene {
     this.socket.emit('cc:request-state');
   }
 
-  private createZoneTabs() {
-    this.zoneTabs = this.add.container(640, 70);
-    this.zoneTabs.setDepth(1001);
+  /**
+   * Create interactive clickable areas for the current zone
+   * Doors allow zone switching, arcade cabinets show game overlays
+   */
+  private createInteractiveAreas() {
+    // Clear existing interactive areas
+    this.interactiveAreas.forEach(area => area.destroy());
+    this.interactiveAreas = [];
 
-    // Tab background
-    const tabBg = this.add.rectangle(0, 0, 540, 50, 0x000000, 0.7);
-    tabBg.setStrokeStyle(2, 0xffffff);
-    this.zoneTabs.add(tabBg);
+    const zoneConfig = HOST_ZONES[this.currentZone];
+    if (!zoneConfig) return;
 
-    // Lobby tab
-    const lobbyTab = this.createTab(-180, 0, 'Lobby', 'lobby');
-    this.zoneTabs.add(lobbyTab);
-
-    // Records tab
-    const recordsTab = this.createTab(0, 0, 'Records', 'records');
-    this.zoneTabs.add(recordsTab);
-
-    // Games tab
-    const gamesTab = this.createTab(180, 0, 'Games', 'games');
-    this.zoneTabs.add(gamesTab);
+    for (const obj of zoneConfig.objects) {
+      this.createInteractiveArea(obj);
+    }
   }
 
-  private createTab(x: number, y: number, label: string, zoneId: string): Phaser.GameObjects.Container {
+  private createInteractiveArea(obj: ObjectData) {
+    const x = obj.x * HostWorldScene.SCALE_X;
+    const y = obj.y * HostWorldScene.SCALE_Y;
+    const width = (obj.width || 60) * HostWorldScene.SCALE_X;
+    const height = (obj.height || 60) * HostWorldScene.SCALE_Y;
+
+    // Determine if this object is interactive
+    const isImplemented = obj.action !== 'under-construction' &&
+      (obj.action !== 'launch-game' || IMPLEMENTED_GAMES.includes(obj.gameType || ''));
+
     const container = this.add.container(x, y);
-    const isActive = this.currentZone === zoneId;
+    container.setDepth(100);
 
-    const bg = this.add.rectangle(0, 0, 180, 40, isActive ? 0xdc2626 : 0x333333);
-    bg.setInteractive({ useHandCursor: true });
-    bg.setStrokeStyle(2, isActive ? 0xffffff : 0x666666);
-
-    const text = this.add.text(0, 0, label, {
-      fontSize: '18px',
-      color: '#ffffff',
-      fontStyle: isActive ? 'bold' : 'normal',
-    }).setOrigin(0.5);
-
-    container.add([bg, text]);
+    // Invisible hit area
+    const hitArea = this.add.rectangle(0, 0, width, height, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: isImplemented });
+    container.add(hitArea);
 
     // Click handler
-    bg.on('pointerdown', () => {
-      if (this.currentZone !== zoneId) {
-        this.switchToZone(zoneId);
+    hitArea.on('pointerdown', () => {
+      this.handleObjectClick(obj);
+    });
+
+    // Hover effects
+    hitArea.on('pointerover', () => {
+      if (obj.label) {
+        this.showHoverLabel(x, y - height / 2 - 20, obj.label);
       }
     });
 
-    bg.on('pointerover', () => {
-      if (this.currentZone !== zoneId) {
-        bg.setFillStyle(0x555555);
-      }
+    hitArea.on('pointerout', () => {
+      this.hideHoverLabel();
     });
 
-    bg.on('pointerout', () => {
-      if (this.currentZone !== zoneId) {
-        bg.setFillStyle(0x333333);
-      }
-    });
+    this.interactiveAreas.push(container);
+  }
 
-    return container;
+  private handleObjectClick(obj: ObjectData) {
+    switch (obj.action) {
+      case 'zone-change':
+        if (obj.targetZone) {
+          this.switchToZone(obj.targetZone);
+        }
+        break;
+      case 'launch-game':
+        if (obj.gameType && IMPLEMENTED_GAMES.includes(obj.gameType)) {
+          this.showGameQueueForType(obj.gameType, obj.label || obj.gameType);
+        }
+        break;
+      case 'under-construction':
+        this.showConstructionMessage(obj.message || 'Coming soon!', obj.label);
+        break;
+      case 'host-vinyl':
+        gameEvents.emit('rs:host-vinyl-browser');
+        break;
+      case 'host-playback':
+        gameEvents.emit('rs:host-playback-controls');
+        break;
+      case 'host-reviews':
+        gameEvents.emit('rs:host-reviews');
+        break;
+    }
+  }
+
+  private showHoverLabel(x: number, y: number, text: string) {
+    this.hideHoverLabel();
+    this.hoverLabel = this.add.text(x, y, text, {
+      fontSize: '18px',
+      color: '#ffffff',
+      backgroundColor: '#000000cc',
+      padding: { x: 10, y: 5 },
+    }).setOrigin(0.5).setDepth(200);
+  }
+
+  private hideHoverLabel() {
+    if (this.hoverLabel) {
+      this.hoverLabel.destroy();
+      this.hoverLabel = undefined;
+    }
+  }
+
+  private showConstructionMessage(message: string, label?: string) {
+    this.hideConstructionMessage();
+
+    this.constructionOverlay = this.add.container(640, 360);
+    this.constructionOverlay.setDepth(1000);
+
+    const bg = this.add.rectangle(0, 0, 400, 180, 0x000000, 0.9);
+    bg.setStrokeStyle(3, 0xfbbf24);
+    bg.setInteractive({ useHandCursor: true });
+    this.constructionOverlay.add(bg);
+
+    const icon = this.add.text(0, -45, '🚧', { fontSize: '56px' }).setOrigin(0.5);
+    this.constructionOverlay.add(icon);
+
+    const messageText = this.add.text(0, 30, message, {
+      fontSize: '22px',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 350 },
+    }).setOrigin(0.5);
+    this.constructionOverlay.add(messageText);
+
+    // Auto-hide after 2 seconds or on click
+    this.time.delayedCall(2000, () => this.hideConstructionMessage());
+    bg.on('pointerdown', () => this.hideConstructionMessage());
+  }
+
+  private hideConstructionMessage() {
+    if (this.constructionOverlay) {
+      this.constructionOverlay.destroy();
+      this.constructionOverlay = undefined;
+    }
   }
 
   private switchToZone(zoneId: string) {
-    this.currentZone = zoneId;
+    // Fade out transition
+    this.cameras.main.fadeOut(300, 0, 0, 0);
 
-    // Recreate tabs to update active state
-    if (this.zoneTabs) {
-      this.zoneTabs.destroy();
-    }
-    this.createZoneTabs();
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.currentZone = zoneId;
 
-    // Clear current players
-    this.players.forEach(p => p.destroy());
-    this.players.clear();
+      // Clear current players
+      this.players.forEach(p => p.destroy());
+      this.players.clear();
 
-    // Clear background and objects
-    if (this.backgroundContainer) {
-      this.backgroundContainer.removeAll(true);
-    }
-    if (this.objectsContainer) {
-      this.objectsContainer.removeAll(true);
-    }
+      // Clear background and objects
+      if (this.backgroundContainer) {
+        this.backgroundContainer.removeAll(true);
+      }
+      if (this.objectsContainer) {
+        this.objectsContainer.removeAll(true);
+      }
 
-    // Recreate background for new zone
-    this.createBackground();
+      // Recreate background and interactive areas for new zone
+      this.createBackground();
+      this.createInteractiveAreas();
 
-    // Tell server to switch spectator zone
-    this.socket.emit('cc:spectator-change-zone', { zoneId });
+      // Tell server to switch spectator zone
+      this.socket.emit('cc:spectator-change-zone', { zoneId });
+
+      // Fade back in
+      this.cameras.main.fadeIn(300, 0, 0, 0);
+    });
   }
 
   private createBackground() {
+    if (!this.backgroundContainer) return;
+
+    // Create zone-specific background
     if (this.currentZone === 'games') {
-      this.createGamesRoomBackgroundWithObjects();
+      createGamesRoomBackground(this, this.backgroundContainer, {
+        width: 1280,
+        height: 720,
+      }, this.arcadeTheme);
     } else if (this.currentZone === 'records') {
-      this.createRecordStoreBackgroundWithObjects();
+      createRecordStoreBackground(this, this.backgroundContainer, {
+        width: 1280,
+        height: 720,
+      }, this.recordsTheme);
     } else {
-      this.createLobbyBackgroundWithObjects();
+      createLobbyBackground(this, this.backgroundContainer, {
+        width: 1280,
+        height: 720,
+        scaleX: HostWorldScene.SCALE_X,
+        scaleY: HostWorldScene.SCALE_Y,
+      }, this.lobbyTheme);
     }
 
-    // TV Display label (always shown) - destroy old one first
-    if (this.tvLabel) {
-      this.tvLabel.destroy();
-    }
-    this.tvLabel = this.add.text(640, 30, '📺 CLOWN CLUB TV', {
+    // Zone label at top (shows current zone name)
+    const zoneName = HOST_ZONES[this.currentZone]?.name || 'Unknown';
+    const zoneLabel = this.add.text(640, 30, `📺 ${zoneName.toUpperCase()}`, {
       fontSize: '28px',
       color: '#171717',
       fontStyle: 'bold',
       backgroundColor: '#ffffff90',
       padding: { x: 20, y: 8 },
     }).setOrigin(0.5).setDepth(1000);
-  }
-
-  private createLobbyBackgroundWithObjects() {
-    // Use shared renderer for background (with scale for 1280x720)
-    if (this.backgroundContainer) {
-      createLobbyBackground(this, this.backgroundContainer, {
-        width: 1280,
-        height: 720,
-        scaleX: 1280 / 800,
-        scaleY: 720 / 600,
-      }, this.lobbyTheme);
-    }
-
-    // Add lobby-specific objects
-    this.createLobbyObjects();
-  }
-
-  private createLobbyObjects() {
-    // Host uses tabs for zone switching, no door needed
-  }
-
-  private createGamesRoomBackgroundWithObjects() {
-    // Use shared renderer for background with arcade theme
-    if (this.backgroundContainer) {
-      createGamesRoomBackground(this, this.backgroundContainer, {
-        width: 1280,
-        height: 720,
-      }, this.arcadeTheme);
-    }
-
-    // Add click areas for game cabinets (invisible when using themed bg)
-    if (this.arcadeTheme?.background) {
-      this.createThemedArcadeClickAreas();
-    } else {
-      this.createGamesRoomObjects();
-    }
-  }
-
-  private createRecordStoreBackgroundWithObjects() {
-    // Use shared renderer for background with records theme
-    if (this.backgroundContainer) {
-      createRecordStoreBackground(this, this.backgroundContainer, {
-        width: 1280,
-        height: 720,
-      }, this.recordsTheme);
-    }
-    // Record store is view-only for host - no interactive elements needed
-  }
-
-  private createThemedArcadeClickAreas() {
-    // Scale factors: player view is 800x600, host view is 1280x720
-    const scaleX = 1280 / 800;
-    const scaleY = 720 / 600;
-
-    // Arcade cabinet positions from ZoneConfig (player coordinates)
-    const cabinets = [
-      { x: 249, y: 316, label: 'Caption Contest', gameType: 'caption-contest', implemented: true },
-      { x: 356, y: 319, label: 'Board Rush', gameType: 'board-game', implemented: true },
-      { x: 459, y: 319, label: 'About You', gameType: 'about-you', implemented: true },
-      { x: 560, y: 316, label: 'Newly Webs', gameType: 'newly-webs', implemented: false },
-    ];
-
-    cabinets.forEach(cab => {
-      const x = cab.x * scaleX;
-      const y = cab.y * scaleY;
-
-      // Invisible hit area
-      const hitArea = this.add.rectangle(x, y, 100 * scaleX, 120 * scaleY, 0x000000, 0);
-      hitArea.setInteractive({ useHandCursor: cab.implemented });
-
-      if (cab.implemented) {
-        hitArea.on('pointerdown', () => {
-          this.showGameQueueForType(cab.gameType, cab.label);
-        });
-        hitArea.on('pointerover', () => {
-          // Show hover label
-          if (!this.tvLabel || this.tvLabel.text !== cab.label) {
-            this.tvLabel?.destroy();
-            this.tvLabel = this.add.text(x, y - 80, cab.label, {
-              fontSize: '18px',
-              color: '#ffffff',
-              backgroundColor: '#000000cc',
-              padding: { x: 10, y: 5 },
-            }).setOrigin(0.5).setDepth(100);
-          }
-        });
-        hitArea.on('pointerout', () => {
-          this.tvLabel?.destroy();
-          this.tvLabel = undefined;
-        });
-      }
-
-      this.objectsContainer?.add(hitArea);
-    });
-  }
-
-  private createGamesRoomObjects() {
-    // Scale factors: player view is 800x600, host view is 1280x720
-    const scaleX = 1280 / 800;
-    const scaleY = 720 / 600;
-
-    // EXIT sign above door area (left side)
-    const exitSign = this.add.text(80 * scaleX, 420, 'EXIT', {
-      fontSize: '24px',
-      color: '#ff0000',
-      backgroundColor: '#000000',
-      padding: { x: 10, y: 6 },
-    });
-    exitSign.setOrigin(0.5);
-    this.objectsContainer?.add(exitSign);
-
-    // Door back to lobby (matches server: x:80, y:520)
-    const door = this.add.text(80 * scaleX, 520 * scaleY, '🚪', { fontSize: '56px' }).setOrigin(0.5);
-    this.objectsContainer?.add(door);
-    const doorLabel = this.add.text(80 * scaleX, 560 * scaleY, 'Exit', {
-      fontSize: '16px',
-      color: '#ffffff',
-      backgroundColor: '#000000aa',
-      padding: { x: 8, y: 4 },
-    }).setOrigin(0.5);
-    this.objectsContainer?.add(doorLabel);
-
-    // Arcade cabinets - matching server ZoneConfig.js positions
-    // Server defines: Caption Contest (150), Board Rush (300), About You (500), Newly Webs (650)
-    this.createArcadeCabinet(150 * scaleX, 180 * scaleY + 100, '📸', 'Caption Contest', 'caption-contest');
-    this.createArcadeCabinet(300 * scaleX, 180 * scaleY + 100, '🎲', 'Board Rush', 'board-game');
-    this.createArcadeCabinet(500 * scaleX, 180 * scaleY + 100, '💭', 'About You', 'about-you');
-    this.createArcadeCabinet(650 * scaleX, 180 * scaleY + 100, '🕸️', 'Newly Webs', 'newly-webs');
-  }
-
-  private createArcadeCabinet(x: number, y: number, emoji: string, label: string, gameType: string) {
-    // Check if this game is implemented
-    const implementedGames = ['board-game', 'caption-contest', 'about-you'];
-    const isImplemented = implementedGames.includes(gameType);
-
-    // Cabinet body - grayed out if not implemented
-    const cabinet = this.add.graphics();
-    const cabinetColor = isImplemented ? 0x2d2d44 : 0x1a1a2a;
-    const screenColor = isImplemented ? 0x00ffff : 0x333355;
-    cabinet.fillStyle(cabinetColor, 1);
-    cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
-    cabinet.fillStyle(screenColor, isImplemented ? 0.3 : 0.2);
-    cabinet.fillRect(x - 40, y - 50, 80, 60);
-    cabinet.setDepth(-5);
-    this.objectsContainer?.add(cabinet);
-
-    // Emoji
-    const icon = this.add.text(x, y - 20, emoji, { fontSize: '48px' }).setOrigin(0.5);
-    if (!isImplemented) icon.setAlpha(0.5);
-    this.objectsContainer?.add(icon);
-
-    // Label
-    const labelText = this.add.text(x, y + 80, label, {
-      fontSize: '18px',
-      color: isImplemented ? '#ffffff' : '#888888',
-      backgroundColor: '#000000aa',
-      padding: { x: 10, y: 5 },
-    }).setOrigin(0.5);
-    this.objectsContainer?.add(labelText);
-
-    // "Coming Soon" badge for unimplemented games
-    if (!isImplemented) {
-      const badge = this.add.text(x, y + 30, '🚧 Soon', {
-        fontSize: '12px',
-        color: '#fbbf24',
-        backgroundColor: '#000000cc',
-        padding: { x: 6, y: 2 },
-      }).setOrigin(0.5);
-      this.objectsContainer?.add(badge);
-    }
-
-    // Interactive hit area for host to click (only for implemented games)
-    if (isImplemented) {
-      const hitArea = this.add.rectangle(x, y, 120, 140, 0x000000, 0);
-      hitArea.setInteractive({ useHandCursor: true });
-      hitArea.on('pointerdown', () => {
-        this.showGameQueueForType(gameType, label);
-      });
-      hitArea.on('pointerover', () => {
-        cabinet.clear();
-        cabinet.fillStyle(0x3d3d54, 1);
-        cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
-        cabinet.fillStyle(0x00ffff, 0.5);
-        cabinet.fillRect(x - 40, y - 50, 80, 60);
-      });
-      hitArea.on('pointerout', () => {
-        cabinet.clear();
-        cabinet.fillStyle(0x2d2d44, 1);
-        cabinet.fillRoundedRect(x - 50, y - 60, 100, 120, 8);
-        cabinet.fillStyle(0x00ffff, 0.3);
-        cabinet.fillRect(x - 40, y - 50, 80, 60);
-      });
-      this.objectsContainer?.add(hitArea);
-    }
+    this.backgroundContainer.add(zoneLabel);
   }
 
   private showGameQueueForType(gameType: string, gameName: string) {
@@ -443,7 +377,6 @@ export class HostWorldScene extends Phaser.Scene {
 
     // Filter players in queue for this game type
     const playersForGame = this.queuedPlayers;
-    console.log('[HostWorld] playersForGame:', playersForGame, 'length:', playersForGame.length);
 
     if (playersForGame.length === 0) {
       const noPlayers = this.add.text(0, -50, 'No players in queue yet', {
@@ -535,7 +468,6 @@ export class HostWorldScene extends Phaser.Scene {
     });
 
     buttonBg.on('pointerdown', () => {
-      console.log('[HostWorld] Start button clicked for game:', this.selectedGameType);
       this.socket.emit('game:start-queued');
       buttonBg.setFillStyle(0x15803d);
     });
@@ -559,125 +491,9 @@ export class HostWorldScene extends Phaser.Scene {
     }
   }
 
-  private createBuilding(x: number, y: number, color: number, emoji: string, label: string) {
-    const g = this.add.graphics();
-    const scale = 1.6; // Scale up for TV
-
-    g.fillStyle(color, 1);
-    g.fillRoundedRect(x - 60 * scale / 2, y, 120 * scale / 2, 100 * scale / 2, 8);
-
-    g.fillStyle(0x654321, 1);
-    g.beginPath();
-    g.moveTo(x - 70 * scale / 2, y);
-    g.lineTo(x, y - 40 * scale / 2);
-    g.lineTo(x + 70 * scale / 2, y);
-    g.closePath();
-    g.fill();
-
-    g.fillStyle(0xFFFFFF, 1);
-    g.beginPath();
-    g.moveTo(x - 65 * scale / 2, y - 5);
-    g.lineTo(x, y - 35 * scale / 2);
-    g.lineTo(x + 65 * scale / 2, y - 5);
-    g.lineTo(x + 55 * scale / 2, y + 5);
-    g.lineTo(x, y - 25 * scale / 2);
-    g.lineTo(x - 55 * scale / 2, y + 5);
-    g.closePath();
-    g.fill();
-
-    g.fillStyle(0x4A3728, 1);
-    g.fillRoundedRect(x - 15 * scale / 2, y + 50 * scale / 2, 30 * scale / 2, 50 * scale / 2, 4);
-
-    g.fillStyle(0xFFF8DC, 1);
-    g.fillRect(x - 40 * scale / 2, y + 25 * scale / 2, 25 * scale / 2, 25 * scale / 2);
-    g.fillRect(x + 15 * scale / 2, y + 25 * scale / 2, 25 * scale / 2, 25 * scale / 2);
-
-    g.setDepth(-50);
-    this.backgroundContainer?.add(g);
-
-    const emojiText = this.add.text(x, y - 55 * scale / 2, emoji, { fontSize: '36px' }).setOrigin(0.5).setDepth(-49);
-    const labelText = this.add.text(x, y + 105 * scale / 2, label, {
-      fontSize: '14px',
-      color: '#ffffff',
-      backgroundColor: '#00000080',
-      padding: { x: 8, y: 3 },
-    }).setOrigin(0.5).setDepth(-49);
-    this.backgroundContainer?.add([emojiText, labelText]);
-  }
-
-  private createLampPost(x: number, y: number) {
-    const g = this.add.graphics();
-    g.fillStyle(0x2C3E50, 1);
-    g.fillRect(x - 4, y, 8, 100);
-    g.fillRect(x - 16, y - 8, 32, 10);
-    g.fillStyle(0xFFF8DC, 0.8);
-    g.fillCircle(x, y + 8, 10);
-    g.fillStyle(0xFFF8DC, 0.2);
-    g.fillCircle(x, y + 25, 30);
-    g.setDepth(-40);
-    this.backgroundContainer?.add(g);
-  }
-
-  private createBench(x: number, y: number) {
-    const g = this.add.graphics();
-    g.fillStyle(0x8B4513, 1);
-    g.fillRect(x - 30, y, 60, 10);
-    g.fillRect(x - 30, y - 18, 60, 8);
-    g.fillStyle(0x5D3A1A, 1);
-    g.fillRect(x - 26, y + 10, 5, 18);
-    g.fillRect(x + 21, y + 10, 5, 18);
-    g.fillStyle(0xFFFFFF, 0.8);
-    g.fillRect(x - 29, y - 2, 58, 4);
-    g.setDepth(-35);
-    this.backgroundContainer?.add(g);
-  }
-
-  private createSnowyTree(x: number, y: number) {
-    const g = this.add.graphics();
-    g.fillStyle(0x5D4037, 1);
-    g.fillRect(x - 6, y + 50, 12, 40);
-
-    g.fillStyle(0x2E7D32, 1);
-    g.beginPath();
-    g.moveTo(x - 45, y + 55);
-    g.lineTo(x, y + 12);
-    g.lineTo(x + 45, y + 55);
-    g.closePath();
-    g.fill();
-
-    g.beginPath();
-    g.moveTo(x - 35, y + 30);
-    g.lineTo(x, y - 12);
-    g.lineTo(x + 35, y + 30);
-    g.closePath();
-    g.fill();
-
-    g.beginPath();
-    g.moveTo(x - 25, y + 6);
-    g.lineTo(x, y - 32);
-    g.lineTo(x + 25, y + 6);
-    g.closePath();
-    g.fill();
-
-    g.fillStyle(0xFFFFFF, 0.9);
-    g.beginPath();
-    g.moveTo(x - 38, y + 55);
-    g.lineTo(x, y + 18);
-    g.lineTo(x + 38, y + 55);
-    g.lineTo(x + 25, y + 55);
-    g.lineTo(x, y + 30);
-    g.lineTo(x - 25, y + 55);
-    g.closePath();
-    g.fill();
-
-    g.setDepth(-30);
-    this.backgroundContainer?.add(g);
-  }
-
   private setupSocketListeners() {
     // World state
     this.socket.on('cc:world-state', (state: WorldState) => {
-      console.log('[HostWorld] Received world state:', state.players.length, 'players');
       this.handleWorldState(state);
     });
 
@@ -688,7 +504,6 @@ export class HostWorldScene extends Phaser.Scene {
 
     // Player joined - server sends playerId/playerName, we need to map to id/name
     this.socket.on('cc:player-joined', (data: { playerId: string; playerName: string; x: number; y: number; character: string; isVIP?: boolean }) => {
-      console.log('[HostWorld] Player joined:', data.playerName);
       this.addPlayer({
         id: data.playerId,
         name: data.playerName,
@@ -701,7 +516,6 @@ export class HostWorldScene extends Phaser.Scene {
 
     // Player left
     this.socket.on('cc:player-left', (data: { playerId: string }) => {
-      console.log('[HostWorld] Player left:', data.playerId);
       this.removePlayer(data.playerId);
     });
 
@@ -718,7 +532,6 @@ export class HostWorldScene extends Phaser.Scene {
     // Game started - show View Game button (don't auto-switch)
     this.socket.on('game:started', (data: { gameType?: string }) => {
       const gameType = data?.gameType || 'board-game';
-      console.log("[HostWorld] Game started, type:", gameType);
       this.gameActiveData = { gameType };
       this.selectedGameType = undefined;
       if (this.queueUI) {
@@ -733,7 +546,6 @@ export class HostWorldScene extends Phaser.Scene {
 
     // Game ended - hide view game button
     this.socket.on('game:ended', () => {
-      console.log('[HostWorld] Game ended');
       this.gameActiveData = undefined;
       this.hideViewGameButton();
       gameEvents.emit('game-ended', {});
@@ -744,7 +556,7 @@ export class HostWorldScene extends Phaser.Scene {
       this.queuedPlayers = data.players || [];
       // Only refresh the overlay if host is already viewing this game
       if (this.selectedGameType && this.queueUI) {
-        const gameName = this.selectedGameType === 'board-game' ? 'Board Rush' : 'Caption Contest';
+        const gameName = this.getGameName(this.selectedGameType);
         this.showGameSelectionOverlay(this.selectedGameType, gameName);
       }
     });
@@ -761,12 +573,19 @@ export class HostWorldScene extends Phaser.Scene {
     });
   }
 
+  private getGameName(gameType: string): string {
+    const gameNames: Record<string, string> = {
+      'board-game': 'Board Rush',
+      'caption-contest': 'Caption Contest',
+      'about-you': 'About You',
+    };
+    return gameNames[gameType] || gameType;
+  }
+
   private addPlayer(data: PlayerData) {
     // Scale positions from 800x600 to 1280x720
-    const scaleX = 1280 / 800;
-    const scaleY = 720 / 600;
-    const x = data.x * scaleX;
-    const y = data.y * scaleY;
+    const x = data.x * HostWorldScene.SCALE_X;
+    const y = data.y * HostWorldScene.SCALE_Y;
 
     const container = this.add.container(x, y) as PlayerContainer;
     const children: Phaser.GameObjects.GameObject[] = [];
@@ -869,10 +688,8 @@ export class HostWorldScene extends Phaser.Scene {
       this.tweens.killTweensOf(player);
 
       // Scale positions
-      const scaleX = 1280 / 800;
-      const scaleY = 720 / 600;
-      const targetX = x * scaleX;
-      const targetY = y * scaleY;
+      const targetX = x * HostWorldScene.SCALE_X;
+      const targetY = y * HostWorldScene.SCALE_Y;
 
       // Calculate direction based on movement from CURRENT position
       const dx = targetX - player.x;
@@ -980,7 +797,6 @@ export class HostWorldScene extends Phaser.Scene {
         } else if (this.gameActiveData.gameType === 'about-you') {
           sceneName = 'HostAboutYouScene';
         }
-        console.log('[HostWorld] Manual switch to:', sceneName);
         this.scene.start(sceneName);
       }
     });
@@ -1021,11 +837,17 @@ export class HostWorldScene extends Phaser.Scene {
     this.socket.off('game:started');
     this.socket.off('game:ended');
     this.socket.off('game:queue-update');
+
+    // Clean up UI elements
     this.hideViewGameButton();
-    if (this.queueUI) {
-      this.queueUI.destroy();
-      this.queueUI = undefined;
-    }
+    this.hideHoverLabel();
+    this.hideConstructionMessage();
+    this.hideGameSelectionOverlay();
+
+    // Clean up interactive areas
+    this.interactiveAreas.forEach(area => area.destroy());
+    this.interactiveAreas = [];
+
     this.players.clear();
   }
 }

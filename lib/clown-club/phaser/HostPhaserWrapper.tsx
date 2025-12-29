@@ -8,7 +8,7 @@ import { HostBoardGameScene } from './scenes/HostBoardGameScene';
 import { HostCaptionContestScene } from './scenes/HostCaptionContestScene';
 import { HostAboutYouScene } from './scenes/HostAboutYouScene';
 import { spriteConfigs, DIRECTION_4_TO_8, CLOWN_DIRECTION_ROWS } from './assets/AssetRegistry';
-import { loadThemeConfig, getLobbyTheme, getArcadeTheme, preloadLobbyThemeAssets, preloadArcadeThemeAssets, LobbyTheme, ArcadeTheme, ThemeConfig } from './ThemeLoader';
+import { loadThemeConfig, getLobbyTheme, getArcadeTheme, getRecordsTheme, preloadLobbyThemeAssets, preloadArcadeThemeAssets, preloadRecordsThemeAssets, LobbyTheme, ArcadeTheme, RecordsTheme, ThemeConfig } from './ThemeLoader';
 
 interface HostPhaserWrapperProps {
   socket: Socket;
@@ -19,6 +19,7 @@ class HostBootScene extends Phaser.Scene {
   private themeConfig: ThemeConfig | null = null;
   private lobbyTheme: LobbyTheme | null = null;
   private arcadeTheme: ArcadeTheme | undefined = undefined;
+  private recordsTheme: RecordsTheme | undefined = undefined;
   private themeAssetsLoaded: boolean = false;
 
   constructor() {
@@ -39,6 +40,7 @@ class HostBootScene extends Phaser.Scene {
       this.themeConfig = await loadThemeConfig();
       this.lobbyTheme = getLobbyTheme(this.themeConfig);
       this.arcadeTheme = getArcadeTheme(this.themeConfig);
+      this.recordsTheme = getRecordsTheme(this.themeConfig);
 
       const hasUnifiedBg = this.lobbyTheme.mode === 'unified' && this.lobbyTheme.background;
       const hasLayeredBg = this.lobbyTheme.layers?.sky;
@@ -52,6 +54,11 @@ class HostBootScene extends Phaser.Scene {
       if (this.arcadeTheme?.mode === 'unified' && this.arcadeTheme.background) {
         preloadArcadeThemeAssets(this, this.arcadeTheme);
       }
+
+      // Load records theme assets
+      if (this.recordsTheme?.mode === 'unified' && this.recordsTheme.background) {
+        preloadRecordsThemeAssets(this, this.recordsTheme);
+      }
     } catch (err) {
       console.warn('[HostBoot] Failed to load theme config:', err);
     }
@@ -62,6 +69,7 @@ class HostBootScene extends Phaser.Scene {
     this.registry.set('themeConfig', this.themeConfig);
     this.registry.set('lobbyTheme', this.lobbyTheme);
     this.registry.set('arcadeTheme', this.arcadeTheme);
+    this.registry.set('recordsTheme', this.recordsTheme);
     this.registry.set('themeAssetsLoaded', this.themeAssetsLoaded);
 
     // Create character animations
