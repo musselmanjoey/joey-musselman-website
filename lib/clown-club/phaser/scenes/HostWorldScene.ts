@@ -5,11 +5,12 @@ import { gameEvents } from '../../gameEvents';
 import {
   createLobbyBackground,
   createGamesRoomBackground,
+  createRecordStoreBackground,
   resolveCharacterSpriteKey,
   getSpriteScale,
   getSpritePositions,
 } from '../WorldRenderer';
-import { LobbyTheme, ArcadeTheme } from '../ThemeLoader';
+import { LobbyTheme, ArcadeTheme, RecordsTheme } from '../ThemeLoader';
 
 type Direction = 'down' | 'left' | 'right' | 'up';
 
@@ -67,6 +68,7 @@ export class HostWorldScene extends Phaser.Scene {
   private selectedGameType?: string; // Which game the host is viewing
   private lobbyTheme?: LobbyTheme;
   private arcadeTheme?: ArcadeTheme;
+  private recordsTheme?: RecordsTheme;
   private tvLabel?: Phaser.GameObjects.Text;
 
   constructor() {
@@ -77,6 +79,7 @@ export class HostWorldScene extends Phaser.Scene {
     this.socket = this.registry.get('socket');
     this.lobbyTheme = this.registry.get('lobbyTheme');
     this.arcadeTheme = this.registry.get('arcadeTheme');
+    this.recordsTheme = this.registry.get('recordsTheme');
     this.players.clear();
     this.currentZone = 'lobby';
     this.gameActiveData = undefined;
@@ -107,16 +110,20 @@ export class HostWorldScene extends Phaser.Scene {
     this.zoneTabs.setDepth(1001);
 
     // Tab background
-    const tabBg = this.add.rectangle(0, 0, 400, 50, 0x000000, 0.7);
+    const tabBg = this.add.rectangle(0, 0, 540, 50, 0x000000, 0.7);
     tabBg.setStrokeStyle(2, 0xffffff);
     this.zoneTabs.add(tabBg);
 
     // Lobby tab
-    const lobbyTab = this.createTab(-100, 0, 'Lobby', 'lobby');
+    const lobbyTab = this.createTab(-180, 0, 'Lobby', 'lobby');
     this.zoneTabs.add(lobbyTab);
 
+    // Records tab
+    const recordsTab = this.createTab(0, 0, 'Records', 'records');
+    this.zoneTabs.add(recordsTab);
+
     // Games tab
-    const gamesTab = this.createTab(100, 0, 'Games Room', 'games');
+    const gamesTab = this.createTab(180, 0, 'Games', 'games');
     this.zoneTabs.add(gamesTab);
   }
 
@@ -189,6 +196,8 @@ export class HostWorldScene extends Phaser.Scene {
   private createBackground() {
     if (this.currentZone === 'games') {
       this.createGamesRoomBackgroundWithObjects();
+    } else if (this.currentZone === 'records') {
+      this.createRecordStoreBackgroundWithObjects();
     } else {
       this.createLobbyBackgroundWithObjects();
     }
@@ -240,6 +249,17 @@ export class HostWorldScene extends Phaser.Scene {
     } else {
       this.createGamesRoomObjects();
     }
+  }
+
+  private createRecordStoreBackgroundWithObjects() {
+    // Use shared renderer for background with records theme
+    if (this.backgroundContainer) {
+      createRecordStoreBackground(this, this.backgroundContainer, {
+        width: 1280,
+        height: 720,
+      }, this.recordsTheme);
+    }
+    // Record store is view-only for host - no interactive elements needed
   }
 
   private createThemedArcadeClickAreas() {

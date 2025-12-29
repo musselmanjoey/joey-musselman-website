@@ -5,6 +5,8 @@ import { RemotePlayer } from '../entities/RemotePlayer';
 import { InteractiveObject } from '../entities/InteractiveObject';
 import { InteractionResult } from '../../types';
 import { gameEvents } from '../../gameEvents';
+import { RecordsTheme } from '../ThemeLoader';
+import { createRecordStoreBackground } from '../WorldRenderer';
 
 interface PlayerData {
   id: string;
@@ -63,6 +65,8 @@ export class RecordStoreScene extends Phaser.Scene {
   private debugMarkers: Phaser.GameObjects.Container[] = [];
   private nowPlayingContainer?: Phaser.GameObjects.Container;
   private playbackState: PlaybackState = { isPlaying: false };
+  private recordsTheme?: RecordsTheme;
+  private backgroundContainer?: Phaser.GameObjects.Container;
 
   constructor() {
     super('RecordStoreScene');
@@ -73,8 +77,21 @@ export class RecordStoreScene extends Phaser.Scene {
     this.socket = this.registry.get('socket');
     this.playerId = this.registry.get('playerId');
 
-    // Create record store background
-    this.createBackground();
+    // Get theme info from registry
+    this.recordsTheme = this.registry.get('recordsTheme');
+
+    // Create background container
+    this.backgroundContainer = this.add.container(0, 0);
+    this.backgroundContainer.setDepth(-100);
+
+    // Create record store background using shared WorldRenderer
+    createRecordStoreBackground(this, this.backgroundContainer, {
+      width: 800,
+      height: 600,
+    }, this.recordsTheme);
+
+    // Now playing display at top
+    this.createNowPlayingDisplay();
 
     // Setup socket listeners
     this.setupSocketListeners();
@@ -139,205 +156,6 @@ export class RecordStoreScene extends Phaser.Scene {
 
   private cleanup() {
     this.cleanupSocketListeners();
-  }
-
-  private createBackground() {
-    const width = 800;
-    const height = 600;
-
-    // Record Store themed background (procedural for now)
-    const backgroundContainer = this.add.container(0, 0);
-    backgroundContainer.setDepth(-100);
-
-    // Dark moody background
-    const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e);
-    backgroundContainer.add(bg);
-
-    // Wooden floor
-    const floor = this.add.rectangle(width / 2, height - 75, width, 150, 0x8b4513);
-    backgroundContainer.add(floor);
-
-    // Floor grain lines
-    const floorGraphics = this.add.graphics();
-    floorGraphics.lineStyle(1, 0x6b3410, 0.3);
-    for (let i = 0; i < 10; i++) {
-      floorGraphics.lineBetween(0, height - 150 + i * 15, width, height - 150 + i * 15);
-    }
-    backgroundContainer.add(floorGraphics);
-
-    // Back wall
-    const wall = this.add.rectangle(width / 2, 200, width, 200, 0x2d2d44);
-    backgroundContainer.add(wall);
-
-    // Vinyl shelves on left side
-    this.createVinylShelves(backgroundContainer, 100, 280);
-
-    // DJ booth on right side
-    this.createDJBooth(backgroundContainer, 550, 320);
-
-    // Review board
-    this.createReviewBoard(backgroundContainer, 680, 350);
-
-    // Exit sign
-    this.createExitSign(backgroundContainer, 92, 340);
-
-    // Ambient lighting
-    this.createAmbientLighting(backgroundContainer, width, height);
-
-    // Now playing display at top
-    this.createNowPlayingDisplay();
-  }
-
-  private createVinylShelves(container: Phaser.GameObjects.Container, x: number, y: number) {
-    // Vinyl record display shelves
-    const shelfContainer = this.add.container(x, y);
-
-    // Shelf backing
-    const backing = this.add.rectangle(0, 0, 200, 180, 0x3d3d5c);
-    shelfContainer.add(backing);
-
-    // Shelf lines
-    const shelves = this.add.graphics();
-    shelves.fillStyle(0x5d4e37);
-    shelves.fillRect(-100, -60, 200, 8);
-    shelves.fillRect(-100, 0, 200, 8);
-    shelves.fillRect(-100, 60, 200, 8);
-    shelfContainer.add(shelves);
-
-    // Vinyl records on shelves (colorful spines)
-    const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d, 0x95e1d3, 0xf38181, 0xaa96da];
-    for (let shelf = 0; shelf < 3; shelf++) {
-      for (let slot = 0; slot < 6; slot++) {
-        const record = this.add.rectangle(
-          -80 + slot * 28,
-          -40 + shelf * 60,
-          20,
-          45,
-          colors[(shelf * 6 + slot) % colors.length]
-        );
-        shelfContainer.add(record);
-      }
-    }
-
-    // Label
-    const label = this.add.text(0, 100, 'COLLECTION', {
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    shelfContainer.add(label);
-
-    container.add(shelfContainer);
-  }
-
-  private createDJBooth(container: Phaser.GameObjects.Container, x: number, y: number) {
-    const boothContainer = this.add.container(x, y);
-
-    // DJ table
-    const table = this.add.rectangle(0, 20, 160, 80, 0x2d2d44);
-    boothContainer.add(table);
-
-    // Turntables
-    const leftTT = this.add.circle(-40, 10, 30, 0x1a1a2e);
-    const rightTT = this.add.circle(40, 10, 30, 0x1a1a2e);
-    boothContainer.add(leftTT);
-    boothContainer.add(rightTT);
-
-    // Vinyl on turntables
-    const leftVinyl = this.add.circle(-40, 10, 25, 0x0a0a0a);
-    const rightVinyl = this.add.circle(40, 10, 25, 0x0a0a0a);
-    boothContainer.add(leftVinyl);
-    boothContainer.add(rightVinyl);
-
-    // Center labels
-    const leftLabel = this.add.circle(-40, 10, 8, 0xdc2626);
-    const rightLabel = this.add.circle(40, 10, 8, 0xdc2626);
-    boothContainer.add(leftLabel);
-    boothContainer.add(rightLabel);
-
-    // Mixer in middle
-    const mixer = this.add.rectangle(0, 10, 30, 50, 0x3d3d5c);
-    boothContainer.add(mixer);
-
-    // Label
-    const label = this.add.text(0, 70, 'DJ BOOTH', {
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    boothContainer.add(label);
-
-    container.add(boothContainer);
-  }
-
-  private createReviewBoard(container: Phaser.GameObjects.Container, x: number, y: number) {
-    const boardContainer = this.add.container(x, y);
-
-    // Cork board
-    const board = this.add.rectangle(0, 0, 100, 120, 0xc4a35a);
-    board.setStrokeStyle(4, 0x5d4e37);
-    boardContainer.add(board);
-
-    // Pinned notes
-    const noteColors = [0xfff8dc, 0xffe4e1, 0xe0ffff];
-    for (let i = 0; i < 3; i++) {
-      const note = this.add.rectangle(-20 + i * 25, -20 + i * 15, 40, 35, noteColors[i]);
-      note.setAngle(-5 + i * 5);
-      boardContainer.add(note);
-
-      // Pin
-      const pin = this.add.circle(-20 + i * 25, -35 + i * 15, 4, 0xdc2626);
-      boardContainer.add(pin);
-    }
-
-    // Label
-    const label = this.add.text(0, 75, 'REVIEWS', {
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    boardContainer.add(label);
-
-    container.add(boardContainer);
-  }
-
-  private createExitSign(container: Phaser.GameObjects.Container, x: number, y: number) {
-    const exitContainer = this.add.container(x, y);
-
-    // Exit sign
-    const sign = this.add.rectangle(0, 0, 60, 25, 0x22c55e);
-    exitContainer.add(sign);
-
-    const exitText = this.add.text(0, 0, 'EXIT', {
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    exitContainer.add(exitText);
-
-    // Arrow
-    const arrow = this.add.text(-25, 0, '<-', {
-      fontSize: '12px',
-      color: '#ffffff',
-    }).setOrigin(0.5);
-    exitContainer.add(arrow);
-
-    container.add(exitContainer);
-  }
-
-  private createAmbientLighting(container: Phaser.GameObjects.Container, width: number, height: number) {
-    // Mood lighting effects
-    const lighting = this.add.graphics();
-
-    // Warm spotlight on DJ booth
-    lighting.fillStyle(0xffa500, 0.1);
-    lighting.fillCircle(550, 280, 120);
-
-    // Cool spotlight on vinyl shelves
-    lighting.fillStyle(0x4ecdc4, 0.08);
-    lighting.fillCircle(100, 280, 100);
-
-    container.add(lighting);
   }
 
   private createNowPlayingDisplay() {

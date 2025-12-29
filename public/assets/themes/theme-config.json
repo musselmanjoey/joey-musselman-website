@@ -62,6 +62,14 @@
           "neonGlow": true,
           "lighting": "dark"
         }
+      },
+      "records": {
+        "mode": "unified",
+        "background": "default/records/records-background.png",
+        "props": [],
+        "effects": {
+          "lighting": "dark"
+        }
       }
     }
   }

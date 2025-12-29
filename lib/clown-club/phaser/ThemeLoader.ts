@@ -56,10 +56,18 @@ export interface ArcadeTheme {
   effects?: ThemeEffects;
 }
 
+export interface RecordsTheme {
+  mode?: 'unified' | 'layered';
+  background?: string;
+  props?: ThemeProp[];
+  effects?: ThemeEffects;
+}
+
 export interface Theme {
   name: string;
   lobby: LobbyTheme;
   arcade?: ArcadeTheme;
+  records?: RecordsTheme;
 }
 
 export interface ThemeConfig {
@@ -80,6 +88,9 @@ export const THEME_ASSET_KEYS = {
   // Arcade
   ARCADE_BACKGROUND: 'theme-arcade-background',
   ARCADE_PROP_PREFIX: 'theme-arcade-prop-',
+  // Records
+  RECORDS_BACKGROUND: 'theme-records-background',
+  RECORDS_PROP_PREFIX: 'theme-records-prop-',
 } as const;
 
 /**
@@ -182,6 +193,32 @@ export function preloadArcadeThemeAssets(scene: Phaser.Scene, arcadeTheme: Arcad
   if (arcadeTheme.props) {
     arcadeTheme.props.forEach((prop, index) => {
       scene.load.image(THEME_ASSET_KEYS.ARCADE_PROP_PREFIX + index, basePath + prop.sprite);
+    });
+  }
+}
+
+/**
+ * Get the records store theme from config
+ */
+export function getRecordsTheme(config: ThemeConfig): RecordsTheme | undefined {
+  const theme = getActiveTheme(config);
+  return theme.records;
+}
+
+/**
+ * Preload records store theme assets in a Phaser scene
+ */
+export function preloadRecordsThemeAssets(scene: Phaser.Scene, recordsTheme: RecordsTheme): void {
+  const basePath = '/assets/themes/';
+
+  if (recordsTheme.mode === 'unified' && recordsTheme.background) {
+    scene.load.image(THEME_ASSET_KEYS.RECORDS_BACKGROUND, basePath + recordsTheme.background);
+  }
+
+  // Load prop sprites if any
+  if (recordsTheme.props) {
+    recordsTheme.props.forEach((prop, index) => {
+      scene.load.image(THEME_ASSET_KEYS.RECORDS_PROP_PREFIX + index, basePath + prop.sprite);
     });
   }
 }

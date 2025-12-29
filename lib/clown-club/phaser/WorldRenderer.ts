@@ -5,7 +5,7 @@
  */
 
 import * as Phaser from 'phaser';
-import { LobbyTheme, ArcadeTheme, THEME_ASSET_KEYS } from './ThemeLoader';
+import { LobbyTheme, ArcadeTheme, RecordsTheme, THEME_ASSET_KEYS } from './ThemeLoader';
 import { characters } from './assets/AssetRegistry';
 
 export interface WorldRendererConfig {
@@ -323,6 +323,202 @@ function createProceduralArcadeBackground(
     fontStyle: 'bold',
   }).setOrigin(0.5);
   container.add(title);
+}
+
+/**
+ * Create record store background using themed assets or procedural fallback
+ */
+export function createRecordStoreBackground(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  config: WorldRendererConfig,
+  recordsTheme?: RecordsTheme
+): void {
+  const { width, height } = config;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Try to use themed background first
+  if (recordsTheme?.mode === 'unified' && scene.textures.exists(THEME_ASSET_KEYS.RECORDS_BACKGROUND)) {
+    const bg = scene.add.image(centerX, centerY, THEME_ASSET_KEYS.RECORDS_BACKGROUND);
+    bg.setDisplaySize(width, height);
+    container.add(bg);
+    return;
+  }
+
+  // Fall back to procedural record store background
+  createProceduralRecordStoreBackground(scene, container, config);
+}
+
+/**
+ * Procedural record store background (fallback when no theme assets)
+ */
+function createProceduralRecordStoreBackground(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  config: WorldRendererConfig
+): void {
+  const { width, height } = config;
+
+  // Dark moody background
+  const bg = scene.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e);
+  container.add(bg);
+
+  // Wooden floor
+  const floor = scene.add.rectangle(width / 2, height - 75, width, 150, 0x8b4513);
+  container.add(floor);
+
+  // Floor grain lines
+  const floorGraphics = scene.add.graphics();
+  floorGraphics.lineStyle(1, 0x6b3410, 0.3);
+  for (let i = 0; i < 10; i++) {
+    floorGraphics.lineBetween(0, height - 150 + i * 15, width, height - 150 + i * 15);
+  }
+  container.add(floorGraphics);
+
+  // Back wall
+  const wall = scene.add.rectangle(width / 2, 200, width, 200, 0x2d2d44);
+  container.add(wall);
+
+  // Vinyl shelves on left side
+  createProceduralVinylShelves(scene, container, 100, 280);
+
+  // DJ booth on right side
+  createProceduralDJBooth(scene, container, 550, 320);
+
+  // Review board
+  createProceduralReviewBoard(scene, container, 680, 350);
+
+  // Exit sign
+  createProceduralExitSign(scene, container, 92, 340);
+
+  // Ambient lighting
+  const lighting = scene.add.graphics();
+  lighting.fillStyle(0xffa500, 0.1);
+  lighting.fillCircle(550, 280, 120);
+  lighting.fillStyle(0x4ecdc4, 0.08);
+  lighting.fillCircle(100, 280, 100);
+  container.add(lighting);
+}
+
+function createProceduralVinylShelves(scene: Phaser.Scene, container: Phaser.GameObjects.Container, x: number, y: number) {
+  const shelfContainer = scene.add.container(x, y);
+
+  const backing = scene.add.rectangle(0, 0, 200, 180, 0x3d3d5c);
+  shelfContainer.add(backing);
+
+  const shelves = scene.add.graphics();
+  shelves.fillStyle(0x5d4e37);
+  shelves.fillRect(-100, -60, 200, 8);
+  shelves.fillRect(-100, 0, 200, 8);
+  shelves.fillRect(-100, 60, 200, 8);
+  shelfContainer.add(shelves);
+
+  const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d, 0x95e1d3, 0xf38181, 0xaa96da];
+  for (let shelf = 0; shelf < 3; shelf++) {
+    for (let slot = 0; slot < 6; slot++) {
+      const record = scene.add.rectangle(
+        -80 + slot * 28,
+        -40 + shelf * 60,
+        20,
+        45,
+        colors[(shelf * 6 + slot) % colors.length]
+      );
+      shelfContainer.add(record);
+    }
+  }
+
+  const label = scene.add.text(0, 100, 'COLLECTION', {
+    fontSize: '14px',
+    color: '#ffffff',
+    fontStyle: 'bold',
+  }).setOrigin(0.5);
+  shelfContainer.add(label);
+
+  container.add(shelfContainer);
+}
+
+function createProceduralDJBooth(scene: Phaser.Scene, container: Phaser.GameObjects.Container, x: number, y: number) {
+  const boothContainer = scene.add.container(x, y);
+
+  const table = scene.add.rectangle(0, 20, 160, 80, 0x2d2d44);
+  boothContainer.add(table);
+
+  const leftTT = scene.add.circle(-40, 10, 30, 0x1a1a2e);
+  const rightTT = scene.add.circle(40, 10, 30, 0x1a1a2e);
+  boothContainer.add(leftTT);
+  boothContainer.add(rightTT);
+
+  const leftVinyl = scene.add.circle(-40, 10, 25, 0x0a0a0a);
+  const rightVinyl = scene.add.circle(40, 10, 25, 0x0a0a0a);
+  boothContainer.add(leftVinyl);
+  boothContainer.add(rightVinyl);
+
+  const leftLabel = scene.add.circle(-40, 10, 8, 0xdc2626);
+  const rightLabel = scene.add.circle(40, 10, 8, 0xdc2626);
+  boothContainer.add(leftLabel);
+  boothContainer.add(rightLabel);
+
+  const mixer = scene.add.rectangle(0, 10, 30, 50, 0x3d3d5c);
+  boothContainer.add(mixer);
+
+  const label = scene.add.text(0, 70, 'DJ BOOTH', {
+    fontSize: '14px',
+    color: '#ffffff',
+    fontStyle: 'bold',
+  }).setOrigin(0.5);
+  boothContainer.add(label);
+
+  container.add(boothContainer);
+}
+
+function createProceduralReviewBoard(scene: Phaser.Scene, container: Phaser.GameObjects.Container, x: number, y: number) {
+  const boardContainer = scene.add.container(x, y);
+
+  const board = scene.add.rectangle(0, 0, 100, 120, 0xc4a35a);
+  board.setStrokeStyle(4, 0x5d4e37);
+  boardContainer.add(board);
+
+  const noteColors = [0xfff8dc, 0xffe4e1, 0xe0ffff];
+  for (let i = 0; i < 3; i++) {
+    const note = scene.add.rectangle(-20 + i * 25, -20 + i * 15, 40, 35, noteColors[i]);
+    note.setAngle(-5 + i * 5);
+    boardContainer.add(note);
+
+    const pin = scene.add.circle(-20 + i * 25, -35 + i * 15, 4, 0xdc2626);
+    boardContainer.add(pin);
+  }
+
+  const label = scene.add.text(0, 75, 'REVIEWS', {
+    fontSize: '14px',
+    color: '#ffffff',
+    fontStyle: 'bold',
+  }).setOrigin(0.5);
+  boardContainer.add(label);
+
+  container.add(boardContainer);
+}
+
+function createProceduralExitSign(scene: Phaser.Scene, container: Phaser.GameObjects.Container, x: number, y: number) {
+  const exitContainer = scene.add.container(x, y);
+
+  const sign = scene.add.rectangle(0, 0, 60, 25, 0x22c55e);
+  exitContainer.add(sign);
+
+  const exitText = scene.add.text(0, 0, 'EXIT', {
+    fontSize: '14px',
+    color: '#ffffff',
+    fontStyle: 'bold',
+  }).setOrigin(0.5);
+  exitContainer.add(exitText);
+
+  const arrow = scene.add.text(-25, 0, '<-', {
+    fontSize: '12px',
+    color: '#ffffff',
+  }).setOrigin(0.5);
+  exitContainer.add(arrow);
+
+  container.add(exitContainer);
 }
 
 /**
