@@ -272,6 +272,57 @@ test('should transition to games room', async ({ page }) => {
 });
 ```
 
+## Image Asset Pipeline
+
+AI-generated images (from Gemini) go through an ingestion pipeline that handles watermark removal, background removal, and metadata tracking.
+
+### Folder Structure
+
+```
+public/assets/themes/
+├── prompts/                       # Organized generation prompts
+│   ├── _context/                  # Reusable style anchors
+│   └── default/                   # Zone-specific prompts
+├── incoming/                      # Drop Gemini downloads here
+├── _originals/                    # Archived originals (with watermarks)
+├── _processed/                    # Watermark removed, full resolution
+└── default/                       # FINAL production assets
+```
+
+### Ingestion Commands
+
+```bash
+npm run ingest:watch              # Watch incoming/ folder
+npm run ingest:lobby -- img.png   # Ingest to lobby zone
+npm run ingest:arcade -- img.png  # Ingest to arcade zone
+
+# With options
+python scripts/ingest-image.py img.png --theme default --zone lobby --resize 800x600
+python scripts/ingest-image.py sprite.png --zone lobby --green-bg  # Remove green background
+python scripts/ingest-image.py sprite.png --zone lobby --remove-bg # AI background removal
+```
+
+### Workflow
+
+1. Generate in Gemini using prompts from `prompts/default/{zone}.md`
+2. Drop file in `incoming/` named `{zone}-{asset}.png` (e.g., `lobby-background.png`)
+3. Run `npm run ingest:watch` - pipeline auto-processes:
+   - Archives original to `_originals/`
+   - Removes Gemini watermark (LaMa inpainting)
+   - Optional: removes background (`--green-bg` or `--remove-bg`)
+   - Saves to final location
+
+### Character Sprites
+
+```bash
+# Process sprite frames (watermark + green bg removal)
+python scripts/ingest-image.py sprite.png --zone lobby --green-bg
+
+# Rebuild spritesheet after processing frames
+python scripts/build-spritesheet.py
+python scripts/generate-color-variants.py
+```
+
 ## Pre-Commit Checklist
 
 1. `git status` - no `.env*`, credentials, or secrets

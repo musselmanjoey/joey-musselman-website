@@ -16,13 +16,15 @@ OUTPUT_FILE = CHAR_DIR / "clown-spritesheet.png"
 FRAME_SIZE = 256
 
 # Source files (6 unique frames)
+# Use -processed.png files if available (watermark + green bg already removed)
+# Otherwise fall back to originals (will need green bg removal)
 FRAMES = {
-    "front-idle": CHAR_DIR / "clown-front-idle.png",
-    "front-walk": CHAR_DIR / "clown-front-walk.png",
-    "side-idle": CHAR_DIR / "clown-side-idle.png",
-    "side-walk": CHAR_DIR / "clown-side-walk-rf.png",  # using the rf file
-    "back-idle": CHAR_DIR / "clown-back.png",
-    "back-walk": CHAR_DIR / "clown-back-walk.png",
+    "front-idle": CHAR_DIR / "clown-front-idle-processed.png",
+    "front-walk": CHAR_DIR / "clown-front-walk-processed.png",
+    "side-idle": CHAR_DIR / "clown-side-idle-processed.png",
+    "side-walk": CHAR_DIR / "clown-side-walk-rf-processed.png",
+    "back-idle": CHAR_DIR / "clown-back-processed.png",
+    "back-walk": CHAR_DIR / "clown-back-walk-processed.png",
 }
 
 def remove_green_background(img):
@@ -107,7 +109,13 @@ def build_spritesheet():
 
         print(f"Processing {name}...")
         img = Image.open(path)
-        img = remove_green_background(img)
+
+        # Skip green bg removal if image already has transparency (pre-processed)
+        if img.mode != "RGBA":
+            img = remove_green_background(img)
+        else:
+            print(f"  (already has transparency, skipping bg removal)")
+
         img = resize_frame(img)
         processed[name] = img
 

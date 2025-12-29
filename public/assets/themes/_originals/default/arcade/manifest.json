@@ -1,0 +1,18 @@
+{
+  "assets": {
+    "arcade-background.png": {
+      "original": "arcade-background_2025-12-29_160200.png",
+      "processed": "default\\arcade\\arcade-background.png",
+      "final": "default\\arcade\\arcade-background.png",
+      "dimensions": {
+        "original": "1024x1024",
+        "final": "1024x1024"
+      },
+      "generated": "2025-12-29T16:02:21.415528",
+      "watermarkRemoved": true,
+      "prompt": null,
+      "notes": "Reprocessed to remove watermark"
+    }
+  },
+  "lastUpdated": "2025-12-29T16:02:21.415528"
+}

@@ -50,3 +50,4 @@ scrapedVideos/
 # Generated sprite files (intermediate build artifacts)
 *-clean.png
 /screenshots/
+__pycache__/

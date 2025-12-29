@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ingest": "python scripts/ingest-image.py",
+    "ingest:watch": "python scripts/ingest-image.py --watch",
+    "ingest:lobby": "python scripts/ingest-image.py --theme default --zone lobby",
+    "ingest:arcade": "python scripts/ingest-image.py --theme default --zone arcade",
+    "ingest:records": "python scripts/ingest-image.py --theme default --zone records"
   },
   "dependencies": {
     "next": "15.5.9",

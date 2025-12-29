@@ -1,0 +1,83 @@
+{
+  "assets": {
+    "sky.png": {
+      "original": "sky.png",
+      "generated": "2024-12-23",
+      "notes": "Legacy layered approach - sky layer"
+    },
+    "horizon.png": {
+      "original": "horizon.png",
+      "generated": "2024-12-23",
+      "notes": "Legacy layered approach - mountain horizon"
+    },
+    "ground.png": {
+      "original": "ground.png",
+      "generated": "2024-12-23",
+      "notes": "Legacy layered approach - snowy ground"
+    },
+    "building-cafe.png": {
+      "original": "building-cafe.png",
+      "generated": "2024-12-23",
+      "notes": "Legacy layered approach - cafe building sprite"
+    },
+    "building-records.png": {
+      "original": "building-records.png",
+      "generated": "2024-12-23",
+      "notes": "Legacy layered approach - record store building sprite"
+    },
+    "building-arcade.png": {
+      "original": "building-arcade.png",
+      "generated": "2024-12-23",
+      "notes": "Legacy layered approach - arcade building sprite"
+    },
+    "prop-info-stand.png": {
+      "original": "prop-info-stand.png",
+      "generated": "2024-12-23",
+      "notes": "Info stand prop"
+    },
+    "prop-bench.png": {
+      "original": "prop-bench.png",
+      "generated": "2024-12-23",
+      "notes": "Bench prop"
+    },
+    "prop-tree.png": {
+      "original": "prop-tree.png",
+      "generated": "2024-12-23",
+      "notes": "Snowy tree prop"
+    },
+    "prop-lamp.png": {
+      "original": "prop-lamp.png",
+      "generated": "2024-12-23",
+      "notes": "Street lamp prop"
+    },
+    "background-full.png": {
+      "original": "background-full_2025-12-29_155151.png",
+      "processed": "default\\lobby\\background-full.png",
+      "final": "default\\lobby\\background-full.png",
+      "dimensions": {
+        "original": "1024x1024",
+        "final": "1024x1024"
+      },
+      "generated": "2025-12-29T15:52:10.585309",
+      "watermarkRemoved": true,
+      "prompt": null,
+      "notes": "v2: added path to record store, under construction sign on cafe"
+    },
+    "test-sprite.png": {
+      "original": "test-sprite_2025-12-29_160850.png",
+      "processed": "default\\lobby\\test-sprite.png",
+      "final": "default\\lobby\\test-sprite.png",
+      "dimensions": {
+        "original": "1024x1024",
+        "final": "1024x1024"
+      },
+      "generated": "2025-12-29T16:09:09.760861",
+      "watermarkRemoved": true,
+      "backgroundRemoved": "green",
+      "prompt": null,
+      "notes": "Testing green bg removal"
+    }
+  },
+  "lastUpdated": "2025-12-29T16:09:09.760861",
+  "notes": "Legacy assets from before ingestion pipeline. These were generated with the layered approach (separate sky/horizon/ground/buildings). Current approach uses unified backgrounds."
+}
