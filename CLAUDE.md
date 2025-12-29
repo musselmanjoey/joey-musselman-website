@@ -168,12 +168,117 @@ Currently using emoji placeholders. Next steps for Club Penguin-style animated s
 5. Update player rendering to use `this.add.sprite()` + `this.anims.create()`
 6. Play walk animation based on movement direction
 
+## Testing
+
+### Playwright Setup
+
+The project uses Playwright for E2E testing and automated screenshots.
+
+```bash
+# Run all tests
+npx playwright test
+
+# Run specific test file
+npx playwright test tests/e2e/world-navigation.spec.ts
+
+# Run with UI mode
+npx playwright test --ui
+
+# Show test report
+npx playwright show-report
+```
+
+### Test Types
+
+**1. Debug Mode Screenshots (No server needed)**
+Uses mock data to render game/world UIs for visual testing.
+
+```bash
+# Screenshot all game phases
+npx tsx scripts/screenshot-debug.ts about-you
+
+# Screenshot all world zones
+npx tsx scripts/screenshot-world.ts
+
+# Screenshot specific zone
+npx tsx scripts/screenshot-world.ts records
+```
+
+**2. E2E Tests (Requires servers)**
+Full integration tests that require both servers running.
+
+```bash
+# Terminal 1: Start game server
+cd ../clown-club && npm run dev
+
+# Terminal 2: Start Next.js
+npm run dev
+
+# Terminal 3: Run tests
+npx playwright test
+```
+
+### Debug System
+
+Debug pages render Phaser scenes with mock data for testing without the game server.
+
+**Game Debug:**
+- URL: `/clown-club/debug/[game]?phase=X&role=Y&viewport=Z`
+- Example: `/clown-club/debug/about-you?phase=answering&role=guesser&viewport=mobile`
+- Key files:
+  - `lib/clown-club/debug/GameDebugWrapper.tsx` - Loads debug scenes
+  - `lib/clown-club/debug/mockData.ts` - Mock game state
+  - `lib/clown-club/debug/scenes/[game]DebugScene.ts` - Per-game scenes
+
+**World Debug:**
+- URL: `/clown-club/debug/world?zone=X&scenario=Y&viewport=Z`
+- Example: `/clown-club/debug/world?zone=records&scenario=vinyl-browser&viewport=desktop`
+- Key files:
+  - `lib/clown-club/debug/WorldDebugWrapper.tsx` - Loads zone scenes
+  - `lib/clown-club/debug/worldMockData.ts` - Mock world state
+  - `lib/clown-club/debug/scenes/[zone]DebugScene.ts` - Per-zone scenes
+
+**Zones:** `lobby`, `games`, `records`
+
+**Scenarios:** `default`, `multiplayer`, `empty`, `game-selector`, `construction`, `vinyl-browser`, `dj-controls`, `reviews`
+
+### Test Structure
+
+```
+tests/
+├── fixtures/
+│   └── clown-club.ts       # Test helpers and zone configs
+└── e2e/
+    └── world-navigation.spec.ts  # Zone transition tests
+
+scripts/
+├── screenshot-debug.ts     # Game phase screenshots
+├── screenshot-world.ts     # World zone screenshots
+└── screenshot-lobby.ts     # Quick lobby screenshot
+```
+
+### Writing Tests
+
+Use the test fixtures for common operations:
+
+```typescript
+import { test, ClownClubHelpers, ZONES } from '../fixtures/clown-club';
+
+test('should transition to games room', async ({ page }) => {
+  const helpers = new ClownClubHelpers(page);
+  await helpers.joinWorld('TestPlayer');
+  await helpers.clickObject('door-arcade', 'lobby');
+  await helpers.waitForZoneTransition('games');
+});
+```
+
 ## Pre-Commit Checklist
 
 1. `git status` - no `.env*`, credentials, or secrets
 2. `npx tsc --noEmit` - no type errors
 3. No `console.log` in production code
 4. Test at 375px viewport width
+5. Run relevant Playwright tests if modifying world/game code
 
 ## IMPORTANT
 
