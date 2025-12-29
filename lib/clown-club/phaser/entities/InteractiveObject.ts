@@ -4,20 +4,27 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
   public objectId: string;
   private emoji: Phaser.GameObjects.Text;
   private highlightCircle: Phaser.GameObjects.Arc;
+  private hitWidth: number;
+  private hitHeight: number;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     emojiChar: string,
-    objectId: string
+    objectId: string,
+    width: number = 60,
+    height: number = 60
   ) {
     super(scene, x, y);
 
     this.objectId = objectId;
+    this.hitWidth = width;
+    this.hitHeight = height;
 
-    // Highlight circle (hidden by default)
-    this.highlightCircle = scene.add.circle(0, 0, 40, 0xffff00, 0.3);
+    // Highlight circle (hidden by default) - scale to fit object
+    const radius = Math.max(width, height) / 2;
+    this.highlightCircle = scene.add.circle(0, 0, radius, 0xffff00, 0.3);
     this.highlightCircle.setVisible(false);
 
     // Object emoji
@@ -32,8 +39,8 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
     // Set depth based on Y
     this.setDepth(y);
 
-    // Make interactive
-    this.setSize(60, 60);
+    // Make interactive with custom size
+    this.setSize(width, height);
     this.setInteractive();
   }
 
@@ -59,10 +66,10 @@ export class InteractiveObject extends Phaser.GameObjects.Container {
 
   getBounds(): Phaser.Geom.Rectangle {
     return new Phaser.Geom.Rectangle(
-      this.x - 30,
-      this.y - 30,
-      60,
-      60
+      this.x - this.hitWidth / 2,
+      this.y - this.hitHeight / 2,
+      this.hitWidth,
+      this.hitHeight
     );
   }
 }

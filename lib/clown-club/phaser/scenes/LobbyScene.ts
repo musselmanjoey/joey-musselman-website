@@ -591,6 +591,10 @@ export class LobbyScene extends Phaser.Scene {
         // Clean up before switching scenes
         this.cleanupSocketListeners();
         this.scene.start('GamesRoomScene');
+      } else if (zoneId === 'records') {
+        // Clean up before switching to record store
+        this.cleanupSocketListeners();
+        this.scene.start('RecordStoreScene');
       }
       // If going back to lobby, we're already in LobbyScene, just fade in
     });

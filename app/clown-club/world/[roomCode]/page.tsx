@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 import { Socket } from 'socket.io-client';
 import { GamePicker } from '@/components/clown-club/GamePicker';
+import { VinylBrowser, PlaybackControls, ReviewPanel } from '@/components/clown-club/record-store';
 import { GameInfo, GameStartedData } from '@/lib/clown-club/types';
 import { gameEvents } from '@/lib/clown-club/gameEvents';
 
@@ -44,6 +45,12 @@ export default function WorldPage() {
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [availableGames, setAvailableGames] = useState<GameInfo[]>([]);
   const [inGame, setInGame] = useState(false);
+
+  // Record Store state
+  const [showVinylBrowser, setShowVinylBrowser] = useState(false);
+  const [showPlaybackControls, setShowPlaybackControls] = useState(false);
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [reviewAlbumId, setReviewAlbumId] = useState<number | undefined>();
 
   useEffect(() => {
     // Get player info from session storage
@@ -123,6 +130,30 @@ export default function WorldPage() {
     gameEvents.on('game-started', handleGameStarted);
     gameEvents.on('game-ended', handleGameEnded);
 
+    // Record Store events
+    const handleShowVinylBrowser = () => {
+      setShowVinylBrowser(true);
+    };
+
+    const handleShowControls = () => {
+      setShowPlaybackControls(true);
+    };
+
+    const handleShowReviews = () => {
+      setReviewAlbumId(undefined); // Show reviews list
+      setShowReviewPanel(true);
+    };
+
+    const handleShowReview = (data: { albumId: number }) => {
+      setReviewAlbumId(data.albumId);
+      setShowReviewPanel(true);
+    };
+
+    gameEvents.on('rs:show-vinyl-browser', handleShowVinylBrowser);
+    gameEvents.on('rs:show-controls', handleShowControls);
+    gameEvents.on('rs:show-reviews', handleShowReviews);
+    gameEvents.on('rs:show-review', handleShowReview);
+
     // Also listen to socket for game:ended and errors
     if (socket) {
       socket.on('game:ended', handleGameEnded);
@@ -138,6 +169,10 @@ export default function WorldPage() {
       gameEvents.off('show-game-picker', handleShowGamePicker);
       gameEvents.off('game-started', handleGameStarted);
       gameEvents.off('game-ended', handleGameEnded);
+      gameEvents.off('rs:show-vinyl-browser', handleShowVinylBrowser);
+      gameEvents.off('rs:show-controls', handleShowControls);
+      gameEvents.off('rs:show-reviews', handleShowReviews);
+      gameEvents.off('rs:show-review', handleShowReview);
       if (socket) {
         socket.off('game:ended', handleGameEnded);
         socket.off('game:left', handleGameEnded);
@@ -184,6 +219,37 @@ export default function WorldPage() {
           games={availableGames}
           onSelect={handleGameSelect}
           onClose={() => setShowGamePicker(false)}
+        />
+      )}
+
+      {/* Record Store Overlays */}
+      {showVinylBrowser && socket && (
+        <VinylBrowser
+          socket={socket}
+          onClose={() => setShowVinylBrowser(false)}
+          onViewReview={(albumId) => {
+            setShowVinylBrowser(false);
+            setReviewAlbumId(albumId);
+            setShowReviewPanel(true);
+          }}
+        />
+      )}
+
+      {showPlaybackControls && socket && (
+        <PlaybackControls
+          socket={socket}
+          onClose={() => setShowPlaybackControls(false)}
+        />
+      )}
+
+      {showReviewPanel && socket && (
+        <ReviewPanel
+          socket={socket}
+          albumId={reviewAlbumId}
+          onClose={() => {
+            setShowReviewPanel(false);
+            setReviewAlbumId(undefined);
+          }}
         />
       )}
 
