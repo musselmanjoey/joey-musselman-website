@@ -51,3 +51,8 @@ scrapedVideos/
 *-clean.png
 /screenshots/
 __pycache__/
+
+# Local dev scripts and docs
+docs/
+scripts/compare-crown.py
+scripts/screenshot-crown.ts
