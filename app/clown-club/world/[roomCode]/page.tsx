@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { connectSocket, resetSocket } from '@/lib/clown-club/socket';
 import { Socket } from 'socket.io-client';
@@ -9,6 +9,18 @@ import { GamePicker } from '@/components/clown-club/GamePicker';
 import { VinylBrowser, PlaybackControls, ReviewPanel } from '@/components/clown-club/record-store';
 import { GameInfo, GameStartedData } from '@/lib/clown-club/types';
 import { gameEvents } from '@/lib/clown-club/gameEvents';
+
+// Declare global crown debug values
+declare global {
+  interface Window {
+    crownDebug?: {
+      crownY: number;
+      crownScale: number;
+      sideOffsetX: number;
+      sideOffsetY: number;
+    };
+  }
+}
 
 // Dynamic import for Phaser (client-only)
 const PhaserWrapper = dynamic(
@@ -27,9 +39,81 @@ function LoadingScreen() {
   );
 }
 
+// Crown Debug Panel Component
+function CrownDebugPanel({
+  values,
+  onChange,
+  onClose,
+}: {
+  values: { crownY: number; crownScale: number; sideOffsetX: number; sideOffsetY: number };
+  onChange: (values: { crownY: number; crownScale: number; sideOffsetX: number; sideOffsetY: number }) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed top-16 left-4 z-50 bg-black/90 text-white p-4 rounded-lg w-64 text-sm">
+      <div className="flex justify-between items-center mb-3">
+        <span className="font-bold">Crown Debug</span>
+        <button onClick={onClose} className="text-gray-400 hover:text-white">X</button>
+      </div>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-gray-400 text-xs mb-1">Y Position: {values.crownY}</label>
+          <input
+            type="range"
+            min="-60"
+            max="0"
+            value={values.crownY}
+            onChange={(e) => onChange({ ...values, crownY: Number(e.target.value) })}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-400 text-xs mb-1">Scale: {values.crownScale.toFixed(2)}</label>
+          <input
+            type="range"
+            min="0.2"
+            max="0.8"
+            step="0.02"
+            value={values.crownScale}
+            onChange={(e) => onChange({ ...values, crownScale: Number(e.target.value) })}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-400 text-xs mb-1">Side X Offset: {values.sideOffsetX}</label>
+          <input
+            type="range"
+            min="-10"
+            max="10"
+            value={values.sideOffsetX}
+            onChange={(e) => onChange({ ...values, sideOffsetX: Number(e.target.value) })}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-gray-400 text-xs mb-1">Side Y Offset: {values.sideOffsetY}</label>
+          <input
+            type="range"
+            min="0"
+            max="20"
+            value={values.sideOffsetY}
+            onChange={(e) => onChange({ ...values, sideOffsetY: Number(e.target.value) })}
+            className="w-full"
+          />
+        </div>
+      </div>
+      <div className="mt-3 p-2 bg-gray-800 rounded text-xs font-mono">
+        crownY: {values.crownY}, scale: {values.crownScale.toFixed(2)}<br/>
+        sideX: {values.sideOffsetX}, sideY: {values.sideOffsetY}
+      </div>
+    </div>
+  );
+}
+
 export default function WorldPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const roomCode = params.roomCode as string;
 
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -51,6 +135,22 @@ export default function WorldPage() {
   const [showPlaybackControls, setShowPlaybackControls] = useState(false);
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [reviewAlbumId, setReviewAlbumId] = useState<number | undefined>();
+
+  // Crown debug state (use ?debug=crown to show panel)
+  const [showCrownDebug, setShowCrownDebug] = useState(searchParams.get('debug') === 'crown');
+  const [crownValues, setCrownValues] = useState({
+    crownY: -35,
+    crownScale: 0.48,
+    sideOffsetX: 7,
+    sideOffsetY: 3,
+  });
+
+  // Update global crown debug values when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.crownDebug = crownValues;
+    }
+  }, [crownValues]);
 
   useEffect(() => {
     // Get player info from session storage
@@ -213,6 +313,15 @@ export default function WorldPage() {
 
   return (
     <div className="game-container">
+      {/* Crown Debug Panel */}
+      {showCrownDebug && (
+        <CrownDebugPanel
+          values={crownValues}
+          onChange={setCrownValues}
+          onClose={() => setShowCrownDebug(false)}
+        />
+      )}
+
       {/* Game Picker Modal */}
       {showGamePicker && (
         <GamePicker

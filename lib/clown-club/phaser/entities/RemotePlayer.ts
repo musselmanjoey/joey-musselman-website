@@ -3,11 +3,19 @@ import { emotes, characters } from '../assets/AssetRegistry';
 
 type Direction = 'down' | 'left' | 'right' | 'up';
 
+// Map direction to crown texture key
+const CROWN_TEXTURES: Record<Direction, string> = {
+  down: 'crown-front',
+  up: 'crown-back',
+  left: 'crown-side',
+  right: 'crown-side',
+};
+
 export class RemotePlayer extends Phaser.GameObjects.Container {
   private sprite?: Phaser.GameObjects.Sprite;
   private emoji?: Phaser.GameObjects.Text;
   private nameTag: Phaser.GameObjects.Text;
-  private crown?: Phaser.GameObjects.Text;
+  private crown?: Phaser.GameObjects.Image;
   private emoteText?: Phaser.GameObjects.Text;
   private chatBubble?: Phaser.GameObjects.Container;
   private targetX: number;
@@ -44,12 +52,11 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
       this.spriteKey = charConfig?.[1].spriteKey || null;
     }
 
-    // Crown for VIP players
-    if (isVIP) {
-      this.crown = scene.add.text(0, -40, '👑', {
-        fontSize: '24px',
-      });
-      this.crown.setOrigin(0.5);
+    // Crown only for Colin
+    if (name === 'Colin' && scene.textures.exists('crown-front')) {
+      this.crown = scene.add.image(0, -35, 'crown-front');
+      this.crown.setOrigin(0.5, 0.5);
+      this.crown.setScale(0.48);
     }
 
     // Create sprite or fallback to emoji
@@ -71,10 +78,7 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
       this.emoji.setOrigin(0.5);
     }
 
-    // Adjust crown position for larger sprites
-    if (this.crown && this.spriteKey?.startsWith('clown-')) {
-      this.crown.setY(-58);
-    }
+    // Crown Y is already set correctly above
 
     // Name tag
     let nameTagY = 35;
@@ -94,9 +98,9 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
     this.nameTag.setOrigin(0.5);
 
     const children: Phaser.GameObjects.GameObject[] = [];
-    if (this.crown) children.push(this.crown);
     if (this.sprite) children.push(this.sprite);
     if (this.emoji) children.push(this.emoji);
+    if (this.crown) children.push(this.crown);
     children.push(this.nameTag);
     this.add(children);
 
@@ -123,6 +127,37 @@ export class RemotePlayer extends Phaser.GameObjects.Container {
 
     if (this.sprite.anims.currentAnim?.key !== animKey) {
       this.sprite.play(animKey);
+    }
+
+    // Update crown texture based on direction
+    this.updateCrownDirection(direction);
+  }
+
+  private updateCrownDirection(direction: Direction) {
+    if (!this.crown) return;
+
+    const textureKey = CROWN_TEXTURES[direction];
+    if (this.crown.texture.key !== textureKey) {
+      this.crown.setTexture(textureKey);
+    }
+
+    // Crown positioning values
+    const baseY = -35;
+    const sideOffsetX = 7;
+    const sideOffsetY = 3;
+
+    if (direction === 'left') {
+      this.crown.setX(sideOffsetX);
+      this.crown.setY(baseY + sideOffsetY);
+      this.crown.setFlipX(true);
+    } else if (direction === 'right') {
+      this.crown.setX(-sideOffsetX);
+      this.crown.setY(baseY + sideOffsetY);
+      this.crown.setFlipX(false);
+    } else {
+      this.crown.setX(0);
+      this.crown.setY(baseY);
+      this.crown.setFlipX(false);
     }
   }
 

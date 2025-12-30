@@ -11,6 +11,14 @@ import { LobbyTheme, ArcadeTheme, RecordsTheme } from '../ThemeLoader';
 
 type Direction = 'down' | 'left' | 'right' | 'up';
 
+// Map direction to crown texture key
+const CROWN_TEXTURES: Record<Direction, string> = {
+  down: 'crown-front',
+  up: 'crown-back',
+  left: 'crown-side',
+  right: 'crown-side',
+};
+
 interface PlayerData {
   id: string;
   name: string;
@@ -23,11 +31,13 @@ interface PlayerData {
 interface PlayerContainer extends Phaser.GameObjects.Container {
   sprite?: Phaser.GameObjects.Sprite;
   emoji?: Phaser.GameObjects.Text;
+  crown?: Phaser.GameObjects.Image;
   spriteKey?: string | null;
   currentDirection?: Direction;
   isMoving?: boolean;
   lastX?: number;
   lastY?: number;
+  playerName?: string;
 }
 
 interface ObjectData {
@@ -608,12 +618,7 @@ export class HostWorldScene extends Phaser.Scene {
     container.isMoving = false;
     container.lastX = x;
     container.lastY = y;
-
-    // Crown for VIP players
-    if (data.isVIP) {
-      const crown = this.add.text(0, spriteKey ? -45 : -35, '👑', { fontSize: '28px' }).setOrigin(0.5);
-      children.push(crown);
-    }
+    container.playerName = data.name;
 
     // Create sprite or fallback to emoji
     if (spriteKey && this.textures.exists(spriteKey)) {
@@ -633,6 +638,15 @@ export class HostWorldScene extends Phaser.Scene {
       const body = this.add.text(0, 0, data.character || '🤡', { fontSize: '40px' }).setOrigin(0.5);
       container.emoji = body;
       children.push(body);
+    }
+
+    // Crown sprite for Colin only (added after sprite so it renders on top)
+    if (data.name === 'Colin' && this.textures.exists('crown-front')) {
+      const crown = this.add.image(0, -30, 'crown-front');
+      crown.setOrigin(0.5, 0.5);
+      crown.setScale(0.42);
+      container.crown = crown;
+      children.push(crown);
     }
 
     // Name tag
@@ -678,6 +692,37 @@ export class HostWorldScene extends Phaser.Scene {
 
     if (player.sprite.anims.currentAnim?.key !== animKey) {
       player.sprite.play(animKey);
+    }
+
+    // Update crown direction
+    this.updateCrownDirection(player, direction);
+  }
+
+  private updateCrownDirection(player: PlayerContainer, direction: Direction) {
+    if (!player.crown) return;
+
+    const textureKey = CROWN_TEXTURES[direction];
+    if (player.crown.texture.key !== textureKey) {
+      player.crown.setTexture(textureKey);
+    }
+
+    // Crown positioning values (scaled for host view)
+    const baseY = -30;
+    const sideOffsetX = 6;
+    const sideOffsetY = 3;
+
+    if (direction === 'left') {
+      player.crown.setX(sideOffsetX);
+      player.crown.setY(baseY + sideOffsetY);
+      player.crown.setFlipX(true);
+    } else if (direction === 'right') {
+      player.crown.setX(-sideOffsetX);
+      player.crown.setY(baseY + sideOffsetY);
+      player.crown.setFlipX(false);
+    } else {
+      player.crown.setX(0);
+      player.crown.setY(baseY);
+      player.crown.setFlipX(false);
     }
   }
 

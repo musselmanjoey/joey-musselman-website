@@ -31,6 +31,11 @@ export class BootScene extends Phaser.Scene {
       });
     });
 
+    // Load crown cosmetic (hat) images
+    this.load.image('crown-front', '/assets/cosmetics/hats/crown-front-clean.png');
+    this.load.image('crown-back', '/assets/cosmetics/hats/crown-back-clean.png');
+    this.load.image('crown-side', '/assets/cosmetics/hats/crown-side-clean.png');
+
     // Try to load theme config and assets
     try {
       this.themeConfig = await loadThemeConfig();
