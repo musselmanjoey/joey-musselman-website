@@ -11,7 +11,7 @@ export default function Home() {
         </p>
         <div className="flex gap-4 text-sm">
           <a
-            href="https://github.com/joeymusselman"
+            href="https://github.com/musselmanjoey"
             target="_blank"
             rel="noopener noreferrer"
             className="link-underline"
@@ -19,18 +19,12 @@ export default function Home() {
             GitHub
           </a>
           <a
-            href="https://linkedin.com/in/joseph-musselman"
+            href="https://www.linkedin.com/in/joseph-musselman/"
             target="_blank"
             rel="noopener noreferrer"
             className="link-underline"
           >
             LinkedIn
-          </a>
-          <a
-            href="mailto:musselmanjoey@gmail.com"
-            className="link-underline"
-          >
-            Email
           </a>
         </div>
       </section>
@@ -59,31 +53,25 @@ export default function Home() {
             featured
           />
           <ProjectCard
-            title="Swaddle"
-            description="AI-powered Spotify playlist curator that transforms music curation into natural language conversation. Analyzes your library's audio features and lyrics sentiment, then integrates with Claude Desktop via MCP to create perfectly curated playlists."
-            tech={['React', 'Electron', 'PostgreSQL', 'Spotify API', 'MCP']}
+            title="MagicHelper"
+            description="Python toolkit that parses MTG Arena logs to track card collections and validate decks, with 30+ MCP tools enabling AI-assisted deck building through Claude Desktop integration."
+            tech={['Python', 'SQLite', 'MCP', 'Scryfall API', 'AsyncIO']}
             featured
+          />
+          <ProjectCard
+            title="Swaddle"
+            description="MCP server that connects Claude Desktop to Spotify, enabling natural language playlist curation. Search your music library, discover tracks, and create playlists through conversation - backed by PostgreSQL cache with audio feature analysis."
+            tech={['Python', 'MCP', 'Spotify API', 'PostgreSQL', 'OAuth 2.0']}
           />
           <ProjectCard
             title="OpTracker"
-            description="Production-grade volleyball analytics platform that extracts detailed player statistics from FIVB Beach Pro Tour matches with 100% accuracy using Playwright automation. Features multiple interfaces including a real-time match tracker with court visualization."
-            tech={['Python', 'Playwright', 'PostgreSQL', 'SQLAlchemy', 'MCP']}
-            featured
-          />
-          <ProjectCard
-            title="MagicHelper"
-            description="MTG Arena collection manager and deck building assistant that parses Arena log files to build a local SQLite database. Integrates with Claude Desktop via MCP server for intelligent deck recommendations and game state analysis."
-            tech={['Python', 'SQLite', 'MCP']}
+            description="Real-time volleyball match tracking app with AI-powered analytics. Features a desktop UI for live game statistics capture and an MCP server enabling natural language queries to match data through Claude Desktop."
+            tech={['Python', 'PostgreSQL', 'SQLAlchemy 2.0', 'MCP', 'Docker', 'Tkinter']}
           />
           <ProjectCard
             title="Finance"
-            description="Privacy-first subscription detection tool that replicates Rocket Money functionality without cloud dependencies. Parses bank statements, uses local Ollama AI for transaction categorization, and identifies forgotten subscriptions with risk scoring."
-            tech={['Python', 'PostgreSQL', 'Ollama', 'Pandas', 'Tkinter']}
-          />
-          <ProjectCard
-            title="Transcriber"
-            description="Desktop application for converting video and audio recordings into searchable text transcripts using OpenAI Whisper. Features batch processing, multiple accuracy levels, and real-time progress tracking."
-            tech={['Python', 'OpenAI Whisper', 'FFmpeg', 'Tkinter']}
+            description="Privacy-first desktop app that detects forgotten subscriptions from bank statements using local AI. Categorizes transactions with Llama 3.1, identifies recurring charges with risk scoring - all running locally with no cloud dependencies."
+            tech={['Python', 'Ollama', 'PostgreSQL', 'Tkinter', 'pandas']}
           />
         </div>
       </section>
