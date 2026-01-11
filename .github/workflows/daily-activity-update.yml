@@ -1,0 +1,49 @@
+name: Daily Activity Update
+
+on:
+  schedule:
+    # Run daily at 9 AM EST (14:00 UTC)
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    # Allow manual trigger for testing
+
+jobs:
+  update-activity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch GitHub activity and update site
+        run: |
+          # Fetch recent events from GitHub API
+          echo "Fetching GitHub activity for musselmanjoey..."
+          EVENTS=$(curl -s "https://api.github.com/users/musselmanjoey/events?per_page=30")
+
+          # Extract PushEvents and format commits (using jq)
+          COMMITS=$(echo "$EVENTS" | jq '[
+            .[] | select(.type == "PushEvent") | {
+              repo: .repo.name,
+              date: .created_at,
+              commits: [.payload.commits[]? | {message: .message, sha: .sha}]
+            }
+          ] | .[0:10]')
+
+          echo "Found activity:"
+          echo "$COMMITS" | jq '.'
+
+          # POST to the website API
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.SITE_URL }}/api/daily-update" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.UPDATE_SECRET }}" \
+            -d "{\"activity\": $COMMITS, \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response: $BODY"
+          echo "HTTP Code: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to update activity"
+            exit 1
+          fi
+
+          echo "Activity updated successfully!"
