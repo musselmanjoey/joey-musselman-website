@@ -1,6 +1,49 @@
 import Link from 'next/link';
+import { ActivityFeed } from '@/components/ActivityFeed';
+import { createClient } from '@supabase/supabase-js';
 
-export default function Home() {
+interface Commit {
+  message: string;
+  sha: string;
+}
+
+interface ActivityItem {
+  repo: string;
+  date: string;
+  commits: Commit[];
+}
+
+async function getActivity(): Promise<{ activity: ActivityItem[]; updated_at: string | null }> {
+  // Skip if Supabase not configured (dev without env vars)
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { activity: [], updated_at: null };
+  }
+
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data, error } = await supabase
+      .from('daily_activity')
+      .select('activity, updated_at')
+      .eq('id', 1)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      activity: data?.activity || [],
+      updated_at: data?.updated_at || null
+    };
+  } catch {
+    return { activity: [], updated_at: null };
+  }
+}
+
+export default async function Home() {
+  const { activity, updated_at } = await getActivity();
   return (
     <main className="max-w-2xl mx-auto px-6 py-16 md:py-24">
       {/* Hero */}
@@ -40,6 +83,9 @@ export default function Home() {
           </p>
         </div>
       </section>
+
+      {/* Activity Feed */}
+      <ActivityFeed activity={activity} updatedAt={updated_at} />
 
       {/* Projects */}
       <section className="mb-16">

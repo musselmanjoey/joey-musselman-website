@@ -15,6 +15,7 @@
     "ingest:records": "python scripts/ingest-image.py --theme default --zone records"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
     "next": "15.5.9",
     "phaser": "^3.90.0",
     "qrcode.react": "^4.2.0",
