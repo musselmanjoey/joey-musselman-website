@@ -1,6 +1,7 @@
 interface Commit {
   message: string;
   sha: string;
+  url?: string;
 }
 
 interface ActivityItem {
@@ -25,7 +26,9 @@ export function ActivityFeed({ activity, updatedAt }: ActivityFeedProps) {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     if (diffDays === 0) return 'today';
     if (diffDays === 1) return 'yesterday';
-    return `${diffDays} days ago`;
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   // Get first line of commit message, truncated
@@ -45,23 +48,51 @@ export function ActivityFeed({ activity, updatedAt }: ActivityFeedProps) {
             <div className="w-2 h-2 rounded-full bg-[var(--accent)] mt-2 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-sm">
-                <span className="font-medium">{item.repo.split('/')[1]}</span>
+                <a
+                  href={`https://github.com/${item.repo}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium hover:text-[var(--accent)] transition-colors"
+                >
+                  {item.repo.split('/')[1]}
+                </a>
                 <span className="text-[var(--muted)]"> · {formatDate(item.date)}</span>
               </p>
               {item.commits.slice(0, 2).map((commit, j) => (
                 <p key={j} className="text-sm text-[var(--muted)] truncate">
-                  {shortMessage(commit.message)}
+                  {commit.url ? (
+                    <a
+                      href={commit.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-[var(--foreground)] transition-colors"
+                    >
+                      {shortMessage(commit.message)}
+                    </a>
+                  ) : (
+                    shortMessage(commit.message)
+                  )}
                 </p>
               ))}
             </div>
           </div>
         ))}
       </div>
-      {updatedAt && (
-        <p className="text-xs text-[var(--muted)] mt-4">
-          Last updated {formatDate(updatedAt)}
-        </p>
-      )}
+      <div className="flex items-center gap-4 mt-4">
+        {updatedAt && (
+          <p className="text-xs text-[var(--muted)]">
+            Last commit {formatDate(updatedAt)}
+          </p>
+        )}
+        <a
+          href="https://github.com/musselmanjoey"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
+        >
+          View all on GitHub →
+        </a>
+      </div>
     </section>
   );
 }

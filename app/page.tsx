@@ -2,15 +2,18 @@ import Link from 'next/link';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { createClient } from '@supabase/supabase-js';
 
-interface Commit {
-  message: string;
+interface CommitRecord {
   sha: string;
+  repo: string;
+  message: string;
+  committed_at: string;
+  url: string | null;
 }
 
 interface ActivityItem {
   repo: string;
   date: string;
-  commits: Commit[];
+  commits: { message: string; sha: string; url?: string }[];
 }
 
 async function getActivity(): Promise<{ activity: ActivityItem[]; updated_at: string | null }> {
@@ -25,17 +28,48 @@ async function getActivity(): Promise<{ activity: ActivityItem[]; updated_at: st
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data, error } = await supabase
-      .from('daily_activity')
-      .select('activity, updated_at')
-      .eq('id', 1)
-      .single();
+    // Fetch recent commits from the new commits table
+    const { data: commits, error } = await supabase
+      .from('commits')
+      .select('sha, repo, message, committed_at, url')
+      .order('committed_at', { ascending: false })
+      .limit(50);
 
     if (error) throw error;
 
+    if (!commits || commits.length === 0) {
+      return { activity: [], updated_at: null };
+    }
+
+    // Group commits by repo + date for display
+    const grouped = new Map<string, ActivityItem>();
+
+    for (const commit of commits as CommitRecord[]) {
+      const date = commit.committed_at.split('T')[0]; // YYYY-MM-DD
+      const key = `${commit.repo}|${date}`;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          repo: commit.repo,
+          date: commit.committed_at,
+          commits: [],
+        });
+      }
+
+      grouped.get(key)!.commits.push({
+        message: commit.message,
+        sha: commit.sha,
+        url: commit.url || undefined,
+      });
+    }
+
+    // Convert to array and take top entries
+    const activity = Array.from(grouped.values()).slice(0, 10);
+    const latestCommit = commits[0] as CommitRecord;
+
     return {
-      activity: data?.activity || [],
-      updated_at: data?.updated_at || null
+      activity,
+      updated_at: latestCommit?.committed_at || null,
     };
   } catch {
     return { activity: [], updated_at: null };

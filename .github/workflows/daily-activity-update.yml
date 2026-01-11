@@ -11,29 +11,49 @@ jobs:
   update-activity:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch GitHub activity and update site
+      - name: Fetch yesterday's commits and ingest
         run: |
           # Fetch recent events from GitHub API
           echo "Fetching GitHub activity for musselmanjoey..."
-          EVENTS=$(curl -s "https://api.github.com/users/musselmanjoey/events?per_page=30")
+          EVENTS=$(curl -s "https://api.github.com/users/musselmanjoey/events?per_page=100")
 
-          # Extract PushEvents and format commits (using jq)
-          COMMITS=$(echo "$EVENTS" | jq '[
-            .[] | select(.type == "PushEvent") | {
-              repo: .repo.name,
-              date: .created_at,
-              commits: [.payload.commits[]? | {message: .message, sha: .sha}]
+          # Calculate cutoff time (36 hours ago to handle timezone edge cases)
+          CUTOFF=$(date -u -d '36 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "Cutoff time: $CUTOFF"
+
+          # Extract commits from PushEvents newer than cutoff
+          # Format: array of {sha, repo, message, committed_at, url}
+          COMMITS=$(echo "$EVENTS" | jq --arg cutoff "$CUTOFF" '[
+            .[] |
+            select(.type == "PushEvent") |
+            select(.created_at > $cutoff) |
+            .repo.name as $repo |
+            .payload.commits[]? |
+            {
+              sha: .sha,
+              repo: $repo,
+              message: .message,
+              committed_at: .timestamp // (now | todate),
+              url: "https://github.com/\($repo)/commit/\(.sha)"
             }
-          ] | .[0:10]')
+          ]')
 
-          echo "Found activity:"
-          echo "$COMMITS" | jq '.'
+          COMMIT_COUNT=$(echo "$COMMITS" | jq 'length')
+          echo "Found $COMMIT_COUNT commits since $CUTOFF"
 
-          # POST to the website API
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.SITE_URL }}/api/daily-update" \
+          if [ "$COMMIT_COUNT" -eq "0" ]; then
+            echo "No new commits to ingest"
+            exit 0
+          fi
+
+          echo "Sample commits:"
+          echo "$COMMITS" | jq '.[0:3]'
+
+          # POST to the commits API
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.SITE_URL }}/api/commits" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.UPDATE_SECRET }}" \
-            -d "{\"activity\": $COMMITS, \"updated_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}")
+            -d "{\"commits\": $COMMITS}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
@@ -42,8 +62,8 @@ jobs:
           echo "HTTP Code: $HTTP_CODE"
 
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "Failed to update activity"
+            echo "Failed to ingest commits"
             exit 1
           fi
 
-          echo "Activity updated successfully!"
+          echo "Commits ingested successfully!"
