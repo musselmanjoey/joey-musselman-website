@@ -13,34 +13,43 @@ jobs:
     steps:
       - name: Fetch yesterday's commits and ingest
         run: |
-          # Fetch recent events from GitHub API
-          echo "Fetching GitHub activity for musselmanjoey..."
-          EVENTS=$(curl -s "https://api.github.com/users/musselmanjoey/events?per_page=100")
+          USERNAME="musselmanjoey"
 
-          # Calculate cutoff time (36 hours ago to handle timezone edge cases)
+          # Calculate cutoff time (36 hours ago)
           CUTOFF=$(date -u -d '36 hours ago' +%Y-%m-%dT%H:%M:%SZ)
           echo "Cutoff time: $CUTOFF"
 
-          # Extract commits from PushEvents newer than cutoff
-          # Format: array of {sha, repo, message, committed_at, url}
-          COMMITS=$(echo "$EVENTS" | jq --arg cutoff "$CUTOFF" '[
-            .[] |
-            select(.type == "PushEvent") |
-            select(.created_at > $cutoff) |
-            .repo.name as $repo |
-            .created_at as $event_date |
-            .payload.commits[]? |
-            {
-              sha: .sha,
-              repo: $repo,
-              message: .message,
-              committed_at: $event_date,
-              url: ("https://github.com/" + $repo + "/commit/" + .sha)
-            }
-          ]')
+          # Get list of public repos
+          echo "Fetching public repos..."
+          REPOS=$(curl -s "https://api.github.com/users/$USERNAME/repos?per_page=100&type=public" | jq -r '.[].full_name')
 
-          COMMIT_COUNT=$(echo "$COMMITS" | jq 'length')
-          echo "Found $COMMIT_COUNT commits since $CUTOFF"
+          ALL_COMMITS="[]"
+
+          # Fetch recent commits from each repo
+          for REPO in $REPOS; do
+            echo "Checking $REPO..."
+            REPO_COMMITS=$(curl -s "https://api.github.com/repos/$REPO/commits?since=$CUTOFF&per_page=50" | jq --arg repo "$REPO" '[
+              .[] |
+              select(.commit != null) |
+              {
+                sha: .sha,
+                repo: $repo,
+                message: .commit.message,
+                committed_at: .commit.author.date,
+                url: .html_url
+              }
+            ]' 2>/dev/null || echo "[]")
+
+            COUNT=$(echo "$REPO_COMMITS" | jq 'length')
+            if [ "$COUNT" -gt "0" ]; then
+              echo "  Found $COUNT commits"
+              ALL_COMMITS=$(echo "$ALL_COMMITS $REPO_COMMITS" | jq -s 'add')
+            fi
+          done
+
+          COMMIT_COUNT=$(echo "$ALL_COMMITS" | jq 'length')
+          echo ""
+          echo "Total commits found: $COMMIT_COUNT"
 
           if [ "$COMMIT_COUNT" -eq "0" ]; then
             echo "No new commits to ingest"
@@ -48,13 +57,13 @@ jobs:
           fi
 
           echo "Sample commits:"
-          echo "$COMMITS" | jq '.[0:3]'
+          echo "$ALL_COMMITS" | jq '.[0:3]'
 
           # POST to the commits API
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ secrets.SITE_URL }}/api/commits" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.UPDATE_SECRET }}" \
-            -d "{\"commits\": $COMMITS}")
+            -d "{\"commits\": $ALL_COMMITS}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
