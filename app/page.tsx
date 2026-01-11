@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { createClient } from '@supabase/supabase-js';
 
+// Revalidate page every 5 minutes to pick up new commits
+export const revalidate = 300;
+
 interface CommitRecord {
   sha: string;
   repo: string;
