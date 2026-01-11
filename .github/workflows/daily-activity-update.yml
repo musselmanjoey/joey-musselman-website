@@ -28,13 +28,14 @@ jobs:
             select(.type == "PushEvent") |
             select(.created_at > $cutoff) |
             .repo.name as $repo |
+            .created_at as $event_date |
             .payload.commits[]? |
             {
               sha: .sha,
               repo: $repo,
               message: .message,
-              committed_at: .timestamp // (now | todate),
-              url: "https://github.com/\($repo)/commit/\(.sha)"
+              committed_at: $event_date,
+              url: ("https://github.com/" + $repo + "/commit/" + .sha)
             }
           ]')
 
