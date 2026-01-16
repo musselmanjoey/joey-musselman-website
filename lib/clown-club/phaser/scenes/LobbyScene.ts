@@ -675,6 +675,19 @@ export class LobbyScene extends Phaser.Scene {
           console.error('[Clown Club] Error launching AboutYouScene:', error);
           this.scene.resume();
         }
+      } else if (gameData.gameType === 'avalon') {
+        try {
+          if (this.scene.isActive('AvalonScene') || this.scene.isPaused('AvalonScene')) {
+            console.log('[Clown Club] Stopping existing AvalonScene');
+            this.scene.stop('AvalonScene');
+          }
+          this.scene.pause();
+          console.log('[Clown Club] Launching AvalonScene');
+          this.scene.launch('AvalonScene');
+        } catch (error) {
+          console.error('[Clown Club] Error launching AvalonScene:', error);
+          this.scene.resume();
+        }
       }
     });
 

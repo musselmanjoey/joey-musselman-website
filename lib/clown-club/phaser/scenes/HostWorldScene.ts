@@ -80,7 +80,7 @@ const HOST_ZONES: Record<string, { name: string; objects: ObjectData[] }> = {
       { id: 'arcade-caption', type: 'arcade', x: 249, y: 316, emoji: '', action: 'launch-game', gameType: 'caption-contest', label: 'Caption Contest' },
       { id: 'arcade-board', type: 'arcade', x: 356, y: 319, emoji: '', action: 'launch-game', gameType: 'board-game', label: 'Board Rush' },
       { id: 'arcade-about', type: 'arcade', x: 459, y: 319, emoji: '', action: 'launch-game', gameType: 'about-you', label: 'About You' },
-      { id: 'arcade-newlywebs', type: 'arcade', x: 560, y: 316, emoji: '', action: 'under-construction', label: 'Newly Webs', message: 'Newly Webs is coming soon! 🕸️' },
+      { id: 'arcade-avalon', type: 'arcade', x: 560, y: 316, emoji: '', action: 'launch-game', gameType: 'avalon', label: 'Avalon' },
       { id: 'stats-panel', type: 'info', x: 716, y: 261, emoji: '', action: 'under-construction', label: 'Leaderboard', message: 'Leaderboard coming soon! 📊' },
     ],
   },
@@ -96,7 +96,7 @@ const HOST_ZONES: Record<string, { name: string; objects: ObjectData[] }> = {
 };
 
 // Implemented games that can be started
-const IMPLEMENTED_GAMES = ['board-game', 'caption-contest', 'about-you'];
+const IMPLEMENTED_GAMES = ['board-game', 'caption-contest', 'about-you', 'avalon'];
 
 /**
  * HostWorldScene - Spectator view of the world for TV display

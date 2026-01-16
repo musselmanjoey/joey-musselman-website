@@ -48,6 +48,11 @@ export class GamesRoomScene extends Phaser.Scene {
   private waitingOverlay?: Phaser.GameObjects.Container;
   private waitingText?: Phaser.GameObjects.Text;
   private constructionOverlay?: Phaser.GameObjects.Container;
+  private queuePosition: number = 0;
+  private queueGameType: string = '';
+  private queueCount: number = 0;
+  private startGameBtn?: Phaser.GameObjects.Rectangle;
+  private startGameText?: Phaser.GameObjects.Text;
   private lastMoveTime: number = 0;
   private static readonly MOVE_THROTTLE_MS = 100;
   private debugText?: Phaser.GameObjects.Text;
@@ -64,6 +69,9 @@ export class GamesRoomScene extends Phaser.Scene {
 
     // Create games room background
     this.createBackground();
+
+    // Hidden admin reset button (invisible, over the "d" in ARCADE)
+    this.createAdminResetButton();
 
     // Setup socket listeners
     this.setupSocketListeners();
@@ -160,6 +168,64 @@ export class GamesRoomScene extends Phaser.Scene {
     // No need to add them here - they're rendered in loadWorldState()
   }
 
+  private createAdminResetButton() {
+    // Invisible button at (482, 121) - over the "d" in ARCADE
+    const hitArea = this.add.rectangle(482, 121, 30, 30, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: false });
+    hitArea.setDepth(1000);
+
+    hitArea.on('pointerdown', () => {
+      // Show confirmation dialog
+      this.showAdminConfirmDialog();
+    });
+  }
+
+  private showAdminConfirmDialog() {
+    const overlay = this.add.container(400, 300);
+    overlay.setDepth(2000);
+
+    const bg = this.add.rectangle(0, 0, 320, 180, 0x000000, 0.95);
+    bg.setStrokeStyle(2, 0xff0000);
+    bg.setInteractive(); // Block clicks
+
+    const title = this.add.text(0, -60, '⚠️ ADMIN RESET', {
+      fontSize: '20px',
+      color: '#ff0000',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const msg = this.add.text(0, -20, 'Clear all games and queues?\nThis will kick everyone.', {
+      fontSize: '14px',
+      color: '#ffffff',
+      align: 'center',
+    }).setOrigin(0.5);
+
+    const confirmBtn = this.add.rectangle(-60, 50, 100, 40, 0xdc2626);
+    confirmBtn.setInteractive({ useHandCursor: true });
+    const confirmText = this.add.text(-60, 50, 'RESET', {
+      fontSize: '16px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    const cancelBtn = this.add.rectangle(60, 50, 100, 40, 0x4a4a4a);
+    cancelBtn.setInteractive({ useHandCursor: true });
+    const cancelText = this.add.text(60, 50, 'Cancel', {
+      fontSize: '16px',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    overlay.add([bg, title, msg, confirmBtn, confirmText, cancelBtn, cancelText]);
+
+    confirmBtn.on('pointerdown', () => {
+      this.socket.emit('admin:reset-all');
+      overlay.destroy();
+    });
+
+    cancelBtn.on('pointerdown', () => {
+      overlay.destroy();
+    });
+  }
+
   private setupSocketListeners() {
     const addListener = (event: string, handler: (...args: unknown[]) => void) => {
       this.boundSocketListeners.set(event, handler);
@@ -251,12 +317,17 @@ export class GamesRoomScene extends Phaser.Scene {
 
     // Game queue events
     addListener('game:queue-joined', (data: unknown) => {
-      const { totalPlayers } = data as { position: number; totalPlayers: number };
+      const { position, totalPlayers, gameType } = data as { position: number; totalPlayers: number; gameType?: string };
+      this.queuePosition = position;
+      this.queueGameType = gameType || '';
       this.showWaitingOverlay(totalPlayers);
     });
 
     addListener('game:queue-update', (data: unknown) => {
-      const { count } = data as { count: number };
+      const { count, gameType } = data as { count: number; gameType?: string };
+      if (gameType) {
+        this.queueGameType = gameType;
+      }
       if (count > 0 && this.waitingOverlay) {
         this.updateWaitingOverlay(count);
       }
@@ -282,6 +353,9 @@ export class GamesRoomScene extends Phaser.Scene {
       } else if (gameData.gameType === 'about-you') {
         this.scene.pause();
         this.scene.launch('AboutYouScene');
+      } else if (gameData.gameType === 'avalon') {
+        this.scene.pause();
+        this.scene.launch('AvalonScene');
       }
     });
 
@@ -423,22 +497,62 @@ export class GamesRoomScene extends Phaser.Scene {
   private showWaitingOverlay(playerCount: number) {
     if (this.waitingOverlay) return;
 
+    this.queueCount = playerCount;
+
+    // Check if this is a "no host" game (player 1 starts the game)
+    const isNoHostGame = this.queueGameType === 'avalon';
+    const isHost = this.queuePosition === 1;
+    const minPlayers = this.queueGameType === 'avalon' ? 5 : 2;
+
     this.waitingOverlay = this.add.container(400, 300);
     this.waitingOverlay.setDepth(1000);
 
-    const bg = this.add.rectangle(0, 0, 300, 150, 0x000000, 0.8);
+    const bg = this.add.rectangle(0, 0, 300, 180, 0x000000, 0.8);
     bg.setStrokeStyle(2, 0xff00ff);
+    bg.setInteractive(); // Block clicks from passing through to game
 
-    this.waitingText = this.add.text(0, -20, `Waiting for players...\n${playerCount} in queue`, {
-      fontSize: '20px',
+    const statusText = isNoHostGame && isHost
+      ? `${playerCount} players in queue\n(${minPlayers} needed to start)`
+      : `Waiting for players...\n${playerCount} in queue`;
+
+    this.waitingText = this.add.text(0, -40, statusText, {
+      fontSize: '18px',
       color: '#ffffff',
       align: 'center',
     });
     this.waitingText.setOrigin(0.5);
 
-    const cancelBtn = this.add.rectangle(0, 50, 100, 35, 0xdc2626);
+    this.waitingOverlay.add([bg, this.waitingText]);
+
+    // Show Start Game button for first player in no-host games
+    if (isNoHostGame && isHost) {
+      const canStart = playerCount >= minPlayers;
+
+      this.startGameBtn = this.add.rectangle(0, 20, 150, 40, canStart ? 0x22c55e : 0x4a4a4a);
+      this.startGameBtn.setStrokeStyle(2, canStart ? 0x16a34a : 0x666666);
+      if (canStart) {
+        this.startGameBtn.setInteractive({ useHandCursor: true });
+      }
+
+      this.startGameText = this.add.text(0, 20, canStart ? 'Start Game' : `Need ${minPlayers} players`, {
+        fontSize: '16px',
+        color: canStart ? '#ffffff' : '#999999',
+      }).setOrigin(0.5);
+
+      this.startGameBtn.on('pointerdown', () => {
+        const currentMinPlayers = this.queueGameType === 'avalon' ? 5 : 2;
+        if (this.queueCount >= currentMinPlayers) {
+          this.socket.emit('game:start-queued');
+        }
+      });
+
+      this.waitingOverlay.add([this.startGameBtn, this.startGameText]);
+    }
+
+    // Leave button
+    const cancelBtn = this.add.rectangle(0, 70, 100, 35, 0xdc2626);
     cancelBtn.setInteractive({ useHandCursor: true });
-    const cancelText = this.add.text(0, 50, 'Leave', {
+    const cancelText = this.add.text(0, 70, 'Leave', {
       fontSize: '16px',
       color: '#ffffff',
     }).setOrigin(0.5);
@@ -447,12 +561,37 @@ export class GamesRoomScene extends Phaser.Scene {
       this.socket.emit('game:leave-queue');
     });
 
-    this.waitingOverlay.add([bg, this.waitingText, cancelBtn, cancelText]);
+    this.waitingOverlay.add([cancelBtn, cancelText]);
   }
 
   private updateWaitingOverlay(count: number) {
+    this.queueCount = count;
+
+    const isNoHostGame = this.queueGameType === 'avalon';
+    const isHost = this.queuePosition === 1;
+    const minPlayers = this.queueGameType === 'avalon' ? 5 : 2;
+
     if (this.waitingText) {
-      this.waitingText.setText(`Waiting for players...\n${count} in queue`);
+      const statusText = isNoHostGame && isHost
+        ? `${count} players in queue\n(${minPlayers} needed to start)`
+        : `Waiting for players...\n${count} in queue`;
+      this.waitingText.setText(statusText);
+    }
+
+    // Update start button state for host in no-host games
+    if (isNoHostGame && isHost && this.startGameBtn && this.startGameText) {
+      const canStart = count >= minPlayers;
+
+      this.startGameBtn.setFillStyle(canStart ? 0x22c55e : 0x4a4a4a);
+      this.startGameBtn.setStrokeStyle(2, canStart ? 0x16a34a : 0x666666);
+      this.startGameText.setText(canStart ? 'Start Game' : `Need ${minPlayers} players`);
+      this.startGameText.setColor(canStart ? '#ffffff' : '#999999');
+
+      if (canStart) {
+        this.startGameBtn.setInteractive({ useHandCursor: true });
+      } else {
+        this.startGameBtn.disableInteractive();
+      }
     }
   }
 
@@ -461,7 +600,12 @@ export class GamesRoomScene extends Phaser.Scene {
       this.waitingOverlay.destroy();
       this.waitingOverlay = undefined;
       this.waitingText = undefined;
+      this.startGameBtn = undefined;
+      this.startGameText = undefined;
     }
+    this.queuePosition = 0;
+    this.queueGameType = '';
+    this.queueCount = 0;
   }
 
   private showConstructionMessage(message: string, label?: string) {

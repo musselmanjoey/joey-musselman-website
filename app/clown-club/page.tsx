@@ -110,6 +110,7 @@ function HomePageContent() {
                   }`}
                   style={{ backgroundColor: color.hex }}
                   title={color.name}
+                  data-testid={`color-${color.id}`}
                 />
               ))}
             </div>
@@ -130,6 +131,7 @@ function HomePageContent() {
               maxLength={8}
               disabled={isLoading}
               autoFocus
+              data-testid="player-name-input"
             />
           </div>
 
@@ -137,6 +139,7 @@ function HomePageContent() {
             onClick={handleEnter}
             disabled={isLoading}
             className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-semibold rounded-xl transition disabled:opacity-50"
+            data-testid="enter-world-button"
           >
             {isLoading ? 'Entering...' : 'Enter World'}
           </button>
