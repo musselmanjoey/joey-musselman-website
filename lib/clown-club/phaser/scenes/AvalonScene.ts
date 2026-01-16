@@ -619,63 +619,166 @@ export class AvalonScene extends Phaser.Scene {
     this.seatingCircle.setVisible(false);
     this.roleCard.setVisible(false);
 
-    const title = this.add.text(0, -100, '⚔️ AVALON ⚔️', {
-      fontSize: '32px',
-      color: '#fbbf24',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-
     const playerCount = data.players?.length || 0;
     const minPlayers = data.minPlayers || 5;
 
-    const countText = this.add.text(0, -50, `Players: ${playerCount}/${minPlayers} minimum`, {
-      fontSize: '18px',
-      color: playerCount >= minPlayers ? '#22c55e' : '#9ca3af',
-    }).setOrigin(0.5);
-
-    this.contentContainer.add([title, countText]);
-
-    // Player list
-    if (data.players) {
-      data.players.slice(0, 10).forEach((player, i) => {
-        const y = -10 + i * 25;
-        const isMe = player.id === this.playerId;
-        const text = this.add.text(0, y, `${isMe ? '→ ' : ''}${player.name}${player.id === data.hostId ? ' (Host)' : ''}`, {
-          fontSize: '14px',
-          color: isMe ? '#3b82f6' : '#ffffff',
-        }).setOrigin(0.5);
-        this.contentContainer.add(text);
-      });
-    }
-
-    // Host controls
-    if (this.isHost && data.canStart) {
-      const startBtn = this.createButton(0, 20, 'START GAME', () => {
-        this.socket.emit('av:start-game');
-      }, COLORS.success, 200, 50, '20px');
-      this.actionArea.add(startBtn);
-
-      // Role configuration hint
-      const configHint = this.add.text(0, 60, 'Default: Merlin + Assassin', {
-        fontSize: '12px',
-        color: '#9ca3af',
+    if (this.isHost) {
+      // HOST VIEW: Role configuration
+      const title = this.add.text(0, -280, '⚔️ AVALON ⚔️', {
+        fontSize: '28px',
+        color: '#fbbf24',
+        fontStyle: 'bold',
       }).setOrigin(0.5);
-      this.actionArea.add(configHint);
-    } else if (!this.isHost) {
+
+      const countText = this.add.text(0, -245, `${playerCount} players joined`, {
+        fontSize: '14px',
+        color: playerCount >= minPlayers ? '#22c55e' : '#9ca3af',
+      }).setOrigin(0.5);
+
+      const roleLabel = this.add.text(0, -210, 'SELECT ROLES:', {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      this.contentContainer.add([title, countText, roleLabel]);
+
+      // Role checkboxes
+      const goodRoles = [
+        { id: 'merlin', name: 'Merlin', desc: 'Sees evil (except Mordred)' },
+        { id: 'percival', name: 'Percival', desc: 'Sees Merlin (and Morgana)' },
+      ];
+      const evilRoles = [
+        { id: 'assassin', name: 'Assassin', desc: 'Can kill Merlin if Good wins' },
+        { id: 'morgana', name: 'Morgana', desc: 'Appears as Merlin to Percival' },
+        { id: 'mordred', name: 'Mordred', desc: 'Hidden from Merlin' },
+        { id: 'oberon', name: 'Oberon', desc: 'Unknown to other Evil' },
+      ];
+
+      // Good team header
+      const goodHeader = this.add.text(-150, -175, '🛡️ GOOD', {
+        fontSize: '14px',
+        color: '#3b82f6',
+        fontStyle: 'bold',
+      }).setOrigin(0);
+      this.contentContainer.add(goodHeader);
+
+      goodRoles.forEach((role, i) => {
+        const y = -150 + i * 40;
+        this.createRoleCheckbox(-150, y, role, 'good');
+      });
+
+      // Evil team header
+      const evilHeader = this.add.text(20, -175, '🗡️ EVIL', {
+        fontSize: '14px',
+        color: '#dc2626',
+        fontStyle: 'bold',
+      }).setOrigin(0);
+      this.contentContainer.add(evilHeader);
+
+      evilRoles.forEach((role, i) => {
+        const y = -150 + i * 40;
+        this.createRoleCheckbox(20, y, role, 'evil');
+      });
+
+      // Difficulty indicator
+      const difficulty = data.difficultyModifier || 0;
+      const diffText = difficulty > 0 ? `Good +${difficulty}` : difficulty < 0 ? `Evil +${Math.abs(difficulty)}` : 'Balanced';
+      const diffColor = difficulty > 0 ? '#3b82f6' : difficulty < 0 ? '#dc2626' : '#9ca3af';
+      const diffIndicator = this.add.text(0, 20, `Balance: ${diffText}`, {
+        fontSize: '14px',
+        color: diffColor,
+      }).setOrigin(0.5);
+      this.contentContainer.add(diffIndicator);
+
+      // Start button
+      if (data.canStart) {
+        const startBtn = this.createButton(0, 30, 'START GAME', () => {
+          this.socket.emit('av:start-game');
+        }, COLORS.success, 200, 50, '20px');
+        this.actionArea.add(startBtn);
+      } else {
+        const needMore = this.add.text(0, 30, `Need ${minPlayers - playerCount} more player(s)`, {
+          fontSize: '16px',
+          color: '#fbbf24',
+        }).setOrigin(0.5);
+        this.actionArea.add(needMore);
+      }
+    } else {
+      // NON-HOST VIEW: Waiting screen
+      const title = this.add.text(0, -100, '⚔️ AVALON ⚔️', {
+        fontSize: '32px',
+        color: '#fbbf24',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      const countText = this.add.text(0, -50, `Players: ${playerCount}/${minPlayers} minimum`, {
+        fontSize: '18px',
+        color: playerCount >= minPlayers ? '#22c55e' : '#9ca3af',
+      }).setOrigin(0.5);
+
+      this.contentContainer.add([title, countText]);
+
+      // Player list
+      if (data.players) {
+        data.players.slice(0, 10).forEach((player, i) => {
+          const y = -10 + i * 25;
+          const isMe = player.id === this.playerId;
+          const text = this.add.text(0, y, `${isMe ? '→ ' : ''}${player.name}${player.id === data.hostId ? ' (Host)' : ''}`, {
+            fontSize: '14px',
+            color: isMe ? '#3b82f6' : '#ffffff',
+          }).setOrigin(0.5);
+          this.contentContainer.add(text);
+        });
+      }
+
       const waitText = this.add.text(0, 20, 'Waiting for host to start...', {
         fontSize: '16px',
         color: '#9ca3af',
       }).setOrigin(0.5);
       this.actionArea.add(waitText);
-    } else {
-      const needMore = this.add.text(0, 20, `Need ${minPlayers - playerCount} more player(s)`, {
-        fontSize: '16px',
-        color: '#fbbf24',
-      }).setOrigin(0.5);
-      this.actionArea.add(needMore);
     }
 
     this.statusText.setText('Social deduction game');
+  }
+
+  private createRoleCheckbox(x: number, y: number, role: { id: string; name: string; desc: string }, team: 'good' | 'evil') {
+    const isSelected = this.selectedRoles.includes(role.id);
+    const teamColor = team === 'good' ? COLORS.good : COLORS.evil;
+
+    const checkbox = this.add.rectangle(x, y, 20, 20, isSelected ? teamColor : COLORS.panel);
+    checkbox.setStrokeStyle(2, teamColor);
+    checkbox.setInteractive({ useHandCursor: true });
+
+    const checkmark = this.add.text(x, y, isSelected ? '✓' : '', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const nameText = this.add.text(x + 18, y - 8, role.name, {
+      fontSize: '13px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0);
+
+    const descText = this.add.text(x + 18, y + 6, role.desc, {
+      fontSize: '10px',
+      color: '#9ca3af',
+    }).setOrigin(0, 0);
+
+    this.contentContainer.add([checkbox, checkmark, nameText, descText]);
+
+    checkbox.on('pointerdown', () => {
+      const idx = this.selectedRoles.indexOf(role.id);
+      if (idx === -1) {
+        this.selectedRoles.push(role.id);
+      } else {
+        this.selectedRoles.splice(idx, 1);
+      }
+      // Update server
+      this.socket.emit('av:configure-roles', { roles: this.selectedRoles });
+    });
   }
 
   private showNight(data: PhaseData) {
@@ -1045,7 +1148,8 @@ export class AvalonScene extends Phaser.Scene {
     this.scale.setGameSize(WORLD_WIDTH, WORLD_HEIGHT);
     this.scale.refresh();
     this.scene.stop();
-    this.scene.resume('LobbyScene');
+    // Return to GamesRoomScene (where player was before starting the game)
+    this.scene.resume('GamesRoomScene');
   }
 
   private cleanupSocketListeners() {
