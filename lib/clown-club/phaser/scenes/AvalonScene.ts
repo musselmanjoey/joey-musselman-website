@@ -50,7 +50,7 @@ interface PhaseData {
   phase: string;
   hostId?: string;
   players?: PlayerInfo[];
-  selectedRoles?: string[];
+  selectedRoles?: string[];  // Also synced in handlePhaseChange
   difficultyModifier?: number;
   validRoles?: ValidRoles;
   teamSize?: { good: number; evil: number };
@@ -126,6 +126,7 @@ interface GameState {
   consecutiveRejections: number;
   maxRejections: number;
   timer: number | null;
+  selectedRoles?: string[];
 }
 
 const COLORS = {
@@ -159,6 +160,7 @@ export class AvalonScene extends Phaser.Scene {
   private isLeader: boolean = false;
   private myRole: Role | null = null;
   private visiblePlayers: PlayerInfo[] = [];
+  private players: PlayerInfo[] = [];  // All players in game
   private seating: PlayerInfo[] = [];
   private questResults: boolean[] = [];
   private currentQuest: number = 1;
@@ -167,14 +169,34 @@ export class AvalonScene extends Phaser.Scene {
   private hasVoted: boolean = false;
   private hasSubmittedCard: boolean = false;
 
-  // UI Elements
+  // UI Elements - Defined zones from top to bottom:
+  // 1. Quest Tracker (y=50) - static
+  // 2. Timer (y=95) - static position
+  // 3. Seating Circle (y=250) - static position, player selection
+  // 4. Info Area (y=440) - dynamic text (quest #, leader, phase info)
+  // 5. Role Card (y=530) - static position, compact role reminder
+  // 6. Action Area (y=620) - dynamic buttons (approve/deny, success/fail, etc.)
   private questTracker!: Phaser.GameObjects.Container;
   private seatingCircle!: Phaser.GameObjects.Container;
+  private infoArea!: Phaser.GameObjects.Container;
   private roleCard!: Phaser.GameObjects.Container;
   private actionArea!: Phaser.GameObjects.Container;
-  private contentContainer!: Phaser.GameObjects.Container;
   private timerText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
+
+  // Legacy - kept for lobby phase only
+  private contentContainer!: Phaser.GameObjects.Container;
+
+  // Role popup state
+  private rolePopupVisible: boolean = false;
+  private rolePopup!: Phaser.GameObjects.Container;
+  private roleRecallButton!: Phaser.GameObjects.Container;
+
+  // Assassination state
+  private assassinationTarget: string | null = null;
+
+  // Current leader info (for display)
+  private currentLeaderName: string = '';
 
   constructor() {
     super('AvalonScene');
@@ -211,36 +233,59 @@ export class AvalonScene extends Phaser.Scene {
     // Background
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.background);
 
-    // Quest tracker (top)
+    // === ZONE 1: Quest tracker (top, y=50) ===
     this.questTracker = this.add.container(GAME_WIDTH / 2, 50);
     this.createQuestTracker();
 
-    // Timer (below quest tracker)
-    this.timerText = this.add.text(GAME_WIDTH / 2, 100, '', {
-      fontSize: '32px',
+    // === ZONE 2: Timer (y=95) ===
+    this.timerText = this.add.text(GAME_WIDTH / 2, 95, '', {
+      fontSize: '28px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    // Seating circle (middle)
-    this.seatingCircle = this.add.container(GAME_WIDTH / 2, 280);
+    // === ZONE 3: Seating circle (middle, y=250) ===
+    this.seatingCircle = this.add.container(GAME_WIDTH / 2, 250);
 
-    // Content container (for phase-specific content)
-    this.contentContainer = this.add.container(GAME_WIDTH / 2, 350);
+    // === ZONE 4: Info area (y=440) - quest #, leader, phase info ===
+    this.infoArea = this.add.container(GAME_WIDTH / 2, 440);
 
-    // Role card (lower)
-    this.roleCard = this.add.container(GAME_WIDTH / 2, 520);
+    // === ZONE 5: Role card (y=530) - compact reminder ===
+    this.roleCard = this.add.container(GAME_WIDTH / 2, 530);
     this.roleCard.setVisible(false);
 
-    // Action area (bottom)
-    this.actionArea = this.add.container(GAME_WIDTH / 2, 610);
+    // === ZONE 6: Action area (y=620) - buttons ===
+    this.actionArea = this.add.container(GAME_WIDTH / 2, 620);
 
-    // Status text
-    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 40, '', {
-      fontSize: '14px',
+    // Status text for progress (votes in, cards in, etc.) - y=680
+    this.statusText = this.add.text(GAME_WIDTH / 2, 680, '', {
+      fontSize: '12px',
       color: '#9ca3af',
       align: 'center',
     }).setOrigin(0.5);
+
+    // Legacy content container (for lobby phase only)
+    this.contentContainer = this.add.container(GAME_WIDTH / 2, 350);
+
+    // Role popup (overlays everything, initially hidden)
+    this.rolePopup = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    this.rolePopup.setVisible(false);
+    this.rolePopup.setDepth(100);
+
+    // Role recall button (? in top right, hidden initially)
+    this.roleRecallButton = this.add.container(GAME_WIDTH - 30, 80);
+    this.roleRecallButton.setVisible(false);
+    this.roleRecallButton.setDepth(50);
+    const recallBg = this.add.circle(0, 0, 18, COLORS.panel);
+    recallBg.setStrokeStyle(2, COLORS.gold);
+    recallBg.setInteractive({ useHandCursor: true });
+    const recallText = this.add.text(0, 0, '?', {
+      fontSize: '20px',
+      color: '#fbbf24',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.roleRecallButton.add([recallBg, recallText]);
+    recallBg.on('pointerdown', () => this.showRolePopup());
 
     // Leave button
     this.createButton(GAME_WIDTH - 50, 30, 'Leave', () => {
@@ -298,9 +343,11 @@ export class AvalonScene extends Phaser.Scene {
       const isMe = player.id === this.playerId;
       const isOnTeam = this.proposedTeam.includes(player.id);
       const isLeader = player.isLeader;
+      const isAssassinTarget = this.assassinationTarget === player.id;
 
       let bgColor = COLORS.panel;
       if (isOnTeam) bgColor = COLORS.gold;
+      if (isAssassinTarget) bgColor = COLORS.evil;
 
       const circle = this.add.circle(x, y, 28, bgColor);
       circle.setStrokeStyle(isMe ? 4 : 2, isMe ? COLORS.good : COLORS.border);
@@ -329,7 +376,8 @@ export class AvalonScene extends Phaser.Scene {
       this.seatingCircle.add([circle, nameText, initial]);
 
       // Interactive (for team selection or assassination)
-      if (interactive && player.id !== this.playerId) {
+      // Leaders CAN select themselves for quests
+      if (interactive) {
         circle.setInteractive({ useHandCursor: true });
 
         circle.on('pointerover', () => {
@@ -366,8 +414,10 @@ export class AvalonScene extends Phaser.Scene {
       this.createSeatingCircle(this.seating, true);
       this.updateTeamBuildingUI();
     } else if (this.phase === 'assassination') {
-      // Assassinate target
-      this.socket.emit('av:assassinate', { targetId: playerId });
+      // Select target (don't assassinate yet, wait for confirm)
+      this.assassinationTarget = playerId;
+      this.createSeatingCircle(this.seating, true);
+      this.updateAssassinationUI();
     }
   }
 
@@ -379,12 +429,13 @@ export class AvalonScene extends Phaser.Scene {
     this.actionArea.removeAll(true);
 
     if (this.isLeader) {
-      const countText = this.add.text(0, -30, `Select ${teamSizeNeeded} players (${this.proposedTeam.length}/${teamSizeNeeded})`, {
+      // Selection count
+      const countText = this.add.text(0, -35, `Select ${teamSizeNeeded} players (${this.proposedTeam.length}/${teamSizeNeeded})`, {
         fontSize: '16px',
-        color: this.proposedTeam.length === teamSizeNeeded ? '#22c55e' : '#9ca3af',
+        color: this.proposedTeam.length === teamSizeNeeded ? '#22c55e' : '#fbbf24',
       }).setOrigin(0.5);
 
-      const proposeBtn = this.createButton(0, 20, 'PROPOSE TEAM', () => {
+      const proposeBtn = this.createButton(0, 15, 'PROPOSE TEAM', () => {
         if (canPropose) {
           this.socket.emit('av:propose-team', { playerIds: this.proposedTeam });
         }
@@ -396,7 +447,7 @@ export class AvalonScene extends Phaser.Scene {
 
       this.actionArea.add([countText, proposeBtn]);
     } else {
-      const waitText = this.add.text(0, 0, 'Waiting for leader...', {
+      const waitText = this.add.text(0, 0, `Waiting for ${this.currentLeaderName || 'leader'}...`, {
         fontSize: '18px',
         color: '#9ca3af',
       }).setOrigin(0.5);
@@ -457,6 +508,84 @@ export class AvalonScene extends Phaser.Scene {
     this.roleCard.setVisible(true);
   }
 
+  private showRolePopup() {
+    if (!this.myRole) return;
+
+    this.rolePopup.removeAll(true);
+    this.rolePopupVisible = true;
+
+    // Dimmed background
+    const dimBg = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7);
+    dimBg.setInteractive(); // Block clicks behind
+
+    // Popup card
+    const bgColor = this.myRole.team === 'good' ? COLORS.good : COLORS.evil;
+    const cardBg = this.add.rectangle(0, 0, 320, 280, COLORS.panel);
+    cardBg.setStrokeStyle(4, bgColor);
+
+    // Close button (X)
+    const closeBtn = this.add.circle(140, -120, 18, COLORS.evil);
+    closeBtn.setInteractive({ useHandCursor: true });
+    const closeX = this.add.text(140, -120, '✕', {
+      fontSize: '18px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    closeBtn.on('pointerdown', () => this.hideRolePopup());
+
+    // Role info
+    const teamEmoji = this.myRole.team === 'good' ? '🛡️' : '🗡️';
+    const roleTitle = this.add.text(0, -80, `${teamEmoji} ${this.myRole.name}`, {
+      fontSize: '28px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const teamLabel = this.add.text(0, -40, this.myRole.team.toUpperCase() + ' TEAM', {
+      fontSize: '16px',
+      color: this.myRole.team === 'good' ? '#93c5fd' : '#fca5a5',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const desc = this.add.text(0, 10, this.myRole.description || '', {
+      fontSize: '14px',
+      color: '#9ca3af',
+      wordWrap: { width: 280 },
+      align: 'center',
+    }).setOrigin(0.5);
+
+    this.rolePopup.add([dimBg, cardBg, closeBtn, closeX, roleTitle, teamLabel, desc]);
+
+    // Show visible players if any
+    if (this.visiblePlayers.length > 0) {
+      const seesLabel = this.add.text(0, 60, 'You see:', {
+        fontSize: '14px',
+        color: '#fbbf24',
+      }).setOrigin(0.5);
+
+      const seesNames = this.add.text(0, 85, this.visiblePlayers.map(p => p.name).join(', '), {
+        fontSize: '16px',
+        color: '#ffffff',
+        wordWrap: { width: 280 },
+        align: 'center',
+      }).setOrigin(0.5);
+
+      this.rolePopup.add([seesLabel, seesNames]);
+    }
+
+    this.rolePopup.setVisible(true);
+    this.roleRecallButton.setVisible(false);
+  }
+
+  private hideRolePopup() {
+    this.rolePopupVisible = false;
+    this.rolePopup.setVisible(false);
+    // Show recall button if we have a role (game has started)
+    if (this.myRole && this.phase !== 'lobby' && this.phase !== 'game-over') {
+      this.roleRecallButton.setVisible(true);
+    }
+  }
+
   private createButton(
     x: number, y: number, text: string, onClick: () => void,
     color: number, width: number, height: number, fontSize: string = '18px'
@@ -509,6 +638,7 @@ export class AvalonScene extends Phaser.Scene {
       this.isLeader = state.isLeader;
       this.myRole = state.myRole;
       this.visiblePlayers = state.visiblePlayers || [];
+      this.players = state.players || [];
       this.questResults = state.questResults || [];
       this.currentQuest = state.currentQuest || 1;
       this.seating = state.seating || [];
@@ -534,6 +664,7 @@ export class AvalonScene extends Phaser.Scene {
           leaderId: state.leaderId,
           minPlayers: state.minPlayers,
           canStart: state.canStart,
+          selectedRoles: state.selectedRoles,
         });
       }
     });
@@ -546,6 +677,7 @@ export class AvalonScene extends Phaser.Scene {
     this.phase = data.phase;
 
     if (data.hostId) this.isHost = data.hostId === this.playerId;
+    if (data.players) this.players = data.players;
     if (data.seating) this.seating = data.seating;
     if (data.questResults) {
       this.questResults = data.questResults;
@@ -554,13 +686,24 @@ export class AvalonScene extends Phaser.Scene {
     if (data.currentQuest) this.currentQuest = data.currentQuest;
     if (data.proposedTeam) this.proposedTeam = data.proposedTeam.map(p => p.id);
     if (data.leaderId) this.isLeader = data.leaderId === this.playerId;
+    if (data.leaderName) this.currentLeaderName = data.leaderName;
+    if (data.selectedRoles) this.selectedRoles = data.selectedRoles;
 
     // Reset per-phase state
     this.hasVoted = false;
     this.hasSubmittedCard = false;
+    this.assassinationTarget = null;
+
+    // Hide role recall on lobby/game-over, show otherwise if we have a role
+    if (this.phase === 'lobby' || this.phase === 'game-over') {
+      this.roleRecallButton.setVisible(false);
+    } else if (this.myRole && !this.rolePopupVisible) {
+      this.roleRecallButton.setVisible(true);
+    }
 
     // Clear containers
     this.contentContainer.removeAll(true);
+    this.infoArea.removeAll(true);
     this.actionArea.removeAll(true);
     this.timerText.setText('');
     this.statusText.setText('');
@@ -598,6 +741,8 @@ export class AvalonScene extends Phaser.Scene {
     this.myRole = data.role;
     this.visiblePlayers = data.sees;
     this.createRoleCard(data.role, data.sees);
+    // Show the role popup automatically on night phase
+    this.showRolePopup();
   }
 
   private updateTimer(seconds: number) {
@@ -618,9 +763,14 @@ export class AvalonScene extends Phaser.Scene {
     this.questTracker.setVisible(false);
     this.seatingCircle.setVisible(false);
     this.roleCard.setVisible(false);
+    this.contentContainer.setVisible(true);
 
-    const playerCount = data.players?.length || 0;
+    // Use data.players if available, fall back to stored this.players
+    const players = data.players?.length ? data.players : this.players;
+    const playerCount = players.length;
     const minPlayers = data.minPlayers || 5;
+    // Compute canStart directly - don't rely solely on server data
+    const canStart = playerCount >= minPlayers;
 
     if (this.isHost) {
       // HOST VIEW: Role configuration
@@ -691,8 +841,8 @@ export class AvalonScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.contentContainer.add(diffIndicator);
 
-      // Start button
-      if (data.canStart) {
+      // Start button - show when enough players
+      if (canStart) {
         const startBtn = this.createButton(0, 30, 'START GAME', () => {
           this.socket.emit('av:start-game');
         }, COLORS.success, 200, 50, '20px');
@@ -720,8 +870,8 @@ export class AvalonScene extends Phaser.Scene {
       this.contentContainer.add([title, countText]);
 
       // Player list
-      if (data.players) {
-        data.players.slice(0, 10).forEach((player, i) => {
+      if (players.length > 0) {
+        players.slice(0, 10).forEach((player, i) => {
           const y = -10 + i * 25;
           const isMe = player.id === this.playerId;
           const text = this.add.text(0, y, `${isMe ? '→ ' : ''}${player.name}${player.id === data.hostId ? ' (Host)' : ''}`, {
@@ -738,8 +888,6 @@ export class AvalonScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.actionArea.add(waitText);
     }
-
-    this.statusText.setText('Social deduction game');
   }
 
   private createRoleCheckbox(x: number, y: number, role: { id: string; name: string; desc: string }, team: 'good' | 'evil') {
@@ -765,6 +913,7 @@ export class AvalonScene extends Phaser.Scene {
     const descText = this.add.text(x + 18, y + 6, role.desc, {
       fontSize: '10px',
       color: '#9ca3af',
+      wordWrap: { width: 130 },
     }).setOrigin(0, 0);
 
     this.contentContainer.add([checkbox, checkmark, nameText, descText]);
@@ -776,16 +925,21 @@ export class AvalonScene extends Phaser.Scene {
       } else {
         this.selectedRoles.splice(idx, 1);
       }
-      // Update server
+      // Update server and redraw UI
       this.socket.emit('av:configure-roles', { roles: this.selectedRoles });
+      // Redraw the checkbox immediately
+      const newSelected = this.selectedRoles.includes(role.id);
+      checkbox.setFillStyle(newSelected ? teamColor : COLORS.panel);
+      checkmark.setText(newSelected ? '✓' : '');
     });
   }
 
   private showNight(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(false);
+    this.contentContainer.setVisible(true);
 
-    // Role reveal is handled by av:your-role event
+    // Role reveal is handled by av:your-role event which shows the popup
     const title = this.add.text(0, -80, '🌙 NIGHT PHASE', {
       fontSize: '28px',
       color: '#fbbf24',
@@ -805,39 +959,39 @@ export class AvalonScene extends Phaser.Scene {
       readyBtn.setAlpha(0.5);
     }, COLORS.good, 160, 45, '18px');
     this.actionArea.add(readyBtn);
-
-    this.statusText.setText('Memorize your role and who you see');
   }
 
   private showTeamBuilding(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(true);
     this.roleCard.setVisible(true);
+    this.contentContainer.setVisible(false);
     this.proposedTeam = [];
 
     // Create interactive seating circle for leader
     this.createSeatingCircle(this.seating, this.isLeader);
 
-    const questText = this.add.text(0, -20, `Quest ${this.currentQuest}`, {
-      fontSize: '24px',
+    // Info area: Quest #, Leader, Rejections
+    const questText = this.add.text(0, -25, `Quest ${this.currentQuest}`, {
+      fontSize: '20px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const leaderText = this.add.text(0, 10, `Leader: ${data.leaderName || 'Unknown'}`, {
-      fontSize: '16px',
+    const leaderText = this.add.text(0, 0, `Leader: ${data.leaderName || 'Unknown'}`, {
+      fontSize: '14px',
       color: this.isLeader ? '#22c55e' : '#9ca3af',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([questText, leaderText]);
+    this.infoArea.add([questText, leaderText]);
 
     // Rejection tracker
     if (data.consecutiveRejections && data.consecutiveRejections > 0) {
-      const rejectText = this.add.text(0, 40, `Rejections: ${data.consecutiveRejections}/${data.maxRejections}`, {
-        fontSize: '14px',
+      const rejectText = this.add.text(0, 20, `Rejections: ${data.consecutiveRejections}/${data.maxRejections}`, {
+        fontSize: '13px',
         color: '#ef4444',
       }).setOrigin(0.5);
-      this.contentContainer.add(rejectText);
+      this.infoArea.add(rejectText);
     }
 
     this.updateTeamBuildingUI();
@@ -847,24 +1001,26 @@ export class AvalonScene extends Phaser.Scene {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(true);
     this.roleCard.setVisible(true);
+    this.contentContainer.setVisible(false);
 
     this.createSeatingCircle(this.seating, false);
 
-    const title = this.add.text(0, -40, 'VOTE ON TEAM', {
-      fontSize: '22px',
+    // Info area: Vote prompt and team names
+    const title = this.add.text(0, -20, 'VOTE ON TEAM', {
+      fontSize: '18px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     const teamNames = data.proposedTeam?.map(p => p.name).join(', ') || '';
-    const teamText = this.add.text(0, 0, teamNames, {
-      fontSize: '14px',
+    const teamText = this.add.text(0, 5, teamNames, {
+      fontSize: '13px',
       color: '#ffffff',
       wordWrap: { width: GAME_WIDTH - 60 },
       align: 'center',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([title, teamText]);
+    this.infoArea.add([title, teamText]);
 
     if (!this.hasVoted) {
       const approveBtn = this.createButton(-70, 0, '✓ APPROVE', () => {
@@ -895,61 +1051,63 @@ export class AvalonScene extends Phaser.Scene {
   }
 
   private handleVoteResult(data: VoteResultData) {
-    this.contentContainer.removeAll(true);
+    this.infoArea.removeAll(true);
     this.actionArea.removeAll(true);
 
     const resultText = data.approved ? '✓ APPROVED' : '✗ REJECTED';
     const resultColor = data.approved ? '#22c55e' : '#ef4444';
 
-    const title = this.add.text(0, -30, resultText, {
-      fontSize: '28px',
+    const title = this.add.text(0, -15, resultText, {
+      fontSize: '24px',
       color: resultColor,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const countText = this.add.text(0, 10, `Approve: ${data.approves} | Reject: ${data.rejects}`, {
-      fontSize: '16px',
+    const countText = this.add.text(0, 15, `Approve: ${data.approves} | Reject: ${data.rejects}`, {
+      fontSize: '14px',
       color: '#9ca3af',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([title, countText]);
+    this.infoArea.add([title, countText]);
   }
 
   private showQuest(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(true);
     this.roleCard.setVisible(true);
+    this.contentContainer.setVisible(false);
 
     this.createSeatingCircle(this.seating, false);
 
     const isOnTeam = data.questTeam?.some(p => p.id === this.playerId);
 
-    const title = this.add.text(0, -40, `QUEST ${this.currentQuest}`, {
-      fontSize: '24px',
+    // Info area: Quest number and status
+    const title = this.add.text(0, -20, `QUEST ${this.currentQuest}`, {
+      fontSize: '20px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.contentContainer.add(title);
+    this.infoArea.add(title);
 
     if (data.requiresTwoFails) {
-      const specialRule = this.add.text(0, -10, '⚠️ Requires 2 fails to fail', {
-        fontSize: '14px',
+      const specialRule = this.add.text(0, 5, '⚠️ Requires 2 fails', {
+        fontSize: '13px',
         color: '#fbbf24',
       }).setOrigin(0.5);
-      this.contentContainer.add(specialRule);
+      this.infoArea.add(specialRule);
     }
 
     if (isOnTeam && !this.hasSubmittedCard) {
-      const hint = this.add.text(0, 20, 'You are on the quest team!', {
-        fontSize: '16px',
+      const hint = this.add.text(0, 25, 'You are on the quest!', {
+        fontSize: '14px',
         color: '#22c55e',
       }).setOrigin(0.5);
-      this.contentContainer.add(hint);
+      this.infoArea.add(hint);
 
       const canFail = this.myRole?.team === 'evil';
 
-      const successBtn = this.createButton(-70, 0, '✓ SUCCESS', () => {
+      const successBtn = this.createButton(canFail ? -70 : 0, 0, '✓ SUCCESS', () => {
         this.socket.emit('av:quest-card', { success: true });
         this.hasSubmittedCard = true;
         this.showCardSubmittedState();
@@ -969,7 +1127,7 @@ export class AvalonScene extends Phaser.Scene {
       this.showCardSubmittedState();
     } else {
       const waitText = this.add.text(0, 0, 'Waiting for quest team...', {
-        fontSize: '18px',
+        fontSize: '16px',
         color: '#9ca3af',
       }).setOrigin(0.5);
       this.actionArea.add(waitText);
@@ -989,65 +1147,93 @@ export class AvalonScene extends Phaser.Scene {
     this.questResults = data.questResults;
     this.createQuestTracker();
 
-    this.contentContainer.removeAll(true);
+    this.infoArea.removeAll(true);
     this.actionArea.removeAll(true);
 
     const result = data.success ? '✓ SUCCESS' : '✗ FAILED';
     const color = data.success ? '#22c55e' : '#ef4444';
 
-    const title = this.add.text(0, -30, result, {
-      fontSize: '32px',
+    const title = this.add.text(0, -15, result, {
+      fontSize: '26px',
       color,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const failText = this.add.text(0, 20, `Fail cards: ${data.failCount}`, {
-      fontSize: '18px',
+    const failText = this.add.text(0, 15, `Fail cards: ${data.failCount}`, {
+      fontSize: '14px',
       color: '#9ca3af',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([title, failText]);
+    this.infoArea.add([title, failText]);
   }
 
   private showAssassination(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.roleCard.setVisible(true);
+    this.seatingCircle.setVisible(true);
+    this.contentContainer.setVisible(false);
+    this.assassinationTarget = null;
 
     const isAssassin = this.myRole?.canAssassinate;
-    const isEvil = this.myRole?.team === 'evil';
 
-    // Create interactive seating for assassin
+    // Create interactive seating for assassin (same pattern as team-building)
     this.createSeatingCircle(this.seating, isAssassin || false);
-    this.seatingCircle.setVisible(true);
 
-    const title = this.add.text(0, -60, '🗡️ ASSASSINATION', {
-      fontSize: '26px',
+    // Info area: Assassination phase info
+    const title = this.add.text(0, -20, '🗡️ ASSASSINATION', {
+      fontSize: '20px',
       color: '#ef4444',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const subtitle = this.add.text(0, -20, 'Good team completed 3 quests!', {
-      fontSize: '16px',
+    const subtitle = this.add.text(0, 5, 'Good completed 3 quests!', {
+      fontSize: '13px',
       color: '#22c55e',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([title, subtitle]);
+    this.infoArea.add([title, subtitle]);
+
+    this.updateAssassinationUI();
+  }
+
+  private updateAssassinationUI() {
+    this.actionArea.removeAll(true);
+
+    const isAssassin = this.myRole?.canAssassinate;
+    const isEvil = this.myRole?.team === 'evil';
+    const hasTarget = this.assassinationTarget !== null;
 
     if (isAssassin) {
-      const hint = this.add.text(0, 20, 'Choose who you think is Merlin', {
+      // Selection count (same style as team-building)
+      const targetName = hasTarget
+        ? this.seating.find(p => p.id === this.assassinationTarget)?.name || 'Unknown'
+        : 'none';
+
+      const countText = this.add.text(0, -35, `Target: ${hasTarget ? targetName : 'Select 1 player'}`, {
         fontSize: '16px',
-        color: '#fbbf24',
+        color: hasTarget ? '#ef4444' : '#fbbf24',
       }).setOrigin(0.5);
-      this.actionArea.add(hint);
+
+      const assassinateBtn = this.createButton(0, 15, '🗡️ ASSASSINATE', () => {
+        if (this.assassinationTarget) {
+          this.socket.emit('av:assassinate', { targetId: this.assassinationTarget });
+        }
+      }, hasTarget ? COLORS.evil : COLORS.panel, 200, 50, '18px');
+
+      if (!hasTarget) {
+        assassinateBtn.setAlpha(0.5);
+      }
+
+      this.actionArea.add([countText, assassinateBtn]);
     } else if (isEvil) {
-      const waitText = this.add.text(0, 20, `Waiting for ${data.assassinName}...`, {
-        fontSize: '16px',
+      const waitText = this.add.text(0, 0, 'Waiting for Assassin...', {
+        fontSize: '18px',
         color: '#9ca3af',
       }).setOrigin(0.5);
       this.actionArea.add(waitText);
     } else {
-      const waitText = this.add.text(0, 20, 'Evil is choosing their target...', {
-        fontSize: '16px',
+      const waitText = this.add.text(0, 0, 'Evil is choosing their target...', {
+        fontSize: '18px',
         color: '#ef4444',
       }).setOrigin(0.5);
       this.actionArea.add(waitText);
@@ -1055,11 +1241,11 @@ export class AvalonScene extends Phaser.Scene {
   }
 
   private handleAssassinationResult(data: AssassinationResultData) {
-    this.contentContainer.removeAll(true);
+    this.infoArea.removeAll(true);
     this.actionArea.removeAll(true);
 
-    const title = this.add.text(0, -40, `Target: ${data.targetName}`, {
-      fontSize: '22px',
+    const title = this.add.text(0, -20, `Target: ${data.targetName}`, {
+      fontSize: '18px',
       color: '#ffffff',
     }).setOrigin(0.5);
 
@@ -1070,48 +1256,50 @@ export class AvalonScene extends Phaser.Scene {
     const color = data.wasMerlin ? '#ef4444' : '#22c55e';
 
     const resultText = this.add.text(0, 10, result, {
-      fontSize: '28px',
+      fontSize: '22px',
       color,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([title, resultText]);
+    this.infoArea.add([title, resultText]);
   }
 
   private handleGameResult(data: GameResultData) {
-    this.contentContainer.removeAll(true);
+    this.infoArea.removeAll(true);
 
     const emoji = data.winner === 'good' ? '🛡️' : '🗡️';
     const color = data.winner === 'good' ? '#3b82f6' : '#ef4444';
     const teamName = data.winner === 'good' ? 'GOOD' : 'EVIL';
 
-    const title = this.add.text(0, -60, `${emoji} ${teamName} WINS! ${emoji}`, {
-      fontSize: '28px',
+    const title = this.add.text(0, -15, `${emoji} ${teamName} WINS! ${emoji}`, {
+      fontSize: '22px',
       color,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const reason = this.add.text(0, -10, data.reason, {
-      fontSize: '16px',
+    const reason = this.add.text(0, 15, data.reason, {
+      fontSize: '13px',
       color: '#9ca3af',
       wordWrap: { width: GAME_WIDTH - 60 },
       align: 'center',
     }).setOrigin(0.5);
 
-    this.contentContainer.add([title, reason]);
+    this.infoArea.add([title, reason]);
   }
 
   private showGameOver(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(false);
+    this.roleRecallButton.setVisible(false);
+    this.contentContainer.setVisible(true);
 
-    const title = this.add.text(0, -100, 'GAME OVER', {
+    const title = this.add.text(0, -120, 'GAME OVER', {
       fontSize: '32px',
       color: '#fbbf24',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const subtitle = this.add.text(0, -60, 'Role Reveal', {
+    const subtitle = this.add.text(0, -80, 'Role Reveal', {
       fontSize: '18px',
       color: '#9ca3af',
     }).setOrigin(0.5);
@@ -1121,13 +1309,13 @@ export class AvalonScene extends Phaser.Scene {
     // Show all roles
     if (data.roleReveal) {
       data.roleReveal.forEach((player, i) => {
-        const y = -20 + i * 35;
+        const y = -40 + i * 30;
         const isMe = player.id === this.playerId;
         const teamEmoji = player.role?.team === 'good' ? '🛡️' : '🗡️';
         const teamColor = player.role?.team === 'good' ? '#3b82f6' : '#ef4444';
 
         const text = this.add.text(0, y, `${teamEmoji} ${player.name}: ${player.role?.name || 'Unknown'}`, {
-          fontSize: isMe ? '15px' : '14px',
+          fontSize: isMe ? '15px' : '13px',
           color: isMe ? teamColor : '#ffffff',
           fontStyle: isMe ? 'bold' : 'normal',
         }).setOrigin(0.5);
@@ -1138,7 +1326,11 @@ export class AvalonScene extends Phaser.Scene {
 
     this.roleCard.setVisible(false);
 
-    this.statusText.setText('Thanks for playing!');
+    // Return to lobby button
+    const returnBtn = this.createButton(0, 20, 'Return to Lobby', () => {
+      this.socket.emit('game:leave');
+    }, COLORS.good, 180, 45, '16px');
+    this.actionArea.add(returnBtn);
   }
 
   // ============ HELPERS ============

@@ -50,7 +50,9 @@ async function launchPlayers() {
     await page.getByTestId(`color-${COLORS[i - 1]}`).click();
     await page.getByTestId('enter-world-button').click();
 
-    await page.waitForURL('**/world/**', { timeout: 15000 });
+    // Wait for navigation to complete and world to load
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await page.waitForSelector('canvas', { timeout: 30000 });
     console.log(`Player ${i}: Joined as ${COLORS[i - 1]}`);
 
     // Small delay between players
