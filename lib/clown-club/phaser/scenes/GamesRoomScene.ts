@@ -318,7 +318,6 @@ export class GamesRoomScene extends Phaser.Scene {
     // Game queue events
     addListener('game:queue-joined', (data: unknown) => {
       const { position, totalPlayers, gameType } = data as { position: number; totalPlayers: number; gameType?: string };
-      console.log('[Queue] game:queue-joined', { position, totalPlayers, gameType });
       this.queuePosition = position;
       this.queueGameType = gameType || '';
       this.showWaitingOverlay(totalPlayers);
@@ -326,7 +325,6 @@ export class GamesRoomScene extends Phaser.Scene {
 
     addListener('game:queue-update', (data: unknown) => {
       const { count, gameType } = data as { count: number; gameType?: string };
-      console.log('[Queue] game:queue-update', { count, gameType, currentQueueType: this.queueGameType, queuePosition: this.queuePosition });
       if (gameType) {
         this.queueGameType = gameType;
       }
@@ -505,7 +503,6 @@ export class GamesRoomScene extends Phaser.Scene {
     const isNoHostGame = this.queueGameType === 'avalon';
     const isHost = this.queuePosition === 1;
     const minPlayers = this.queueGameType === 'avalon' ? 5 : 2;
-    console.log('[Queue] showWaitingOverlay', { playerCount, queueGameType: this.queueGameType, queuePosition: this.queuePosition, isNoHostGame, isHost, minPlayers });
 
     this.waitingOverlay = this.add.container(400, 300);
     this.waitingOverlay.setDepth(1000);
