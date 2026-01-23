@@ -6,6 +6,7 @@ import { createDustEffect } from '@/lib/book-scenes/effects/dustParticles';
 import { createPetalEffect } from '@/lib/book-scenes/effects/petalParticles';
 import { createShootingStarEffect } from '@/lib/book-scenes/effects/shootingStars';
 import { createMistEffect } from '@/lib/book-scenes/effects/mistEffect';
+import { createWaterDripEffect } from '@/lib/book-scenes/effects/waterDrips';
 
 interface SceneViewerProps {
   scene: BookScene;
@@ -14,35 +15,43 @@ interface SceneViewerProps {
 
 export default function SceneViewer({ scene, fullscreen = false }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Handle effects
+  // Handle effects - each effect gets its own canvas
   useEffect(() => {
-    if (!canvasRef.current || !imageLoaded) return;
+    if (!canvasContainerRef.current || !imageLoaded) return;
 
+    const container = canvasContainerRef.current;
     const cleanups: (() => void)[] = [];
+    const canvases: HTMLCanvasElement[] = [];
 
-    scene.effects.forEach((effect) => {
-      if (effect.type === 'dust' && canvasRef.current) {
-        const cleanup = createDustEffect(canvasRef.current, effect.config);
-        cleanups.push(cleanup);
-      } else if (effect.type === 'petals' && canvasRef.current) {
-        const cleanup = createPetalEffect(canvasRef.current, effect.config);
-        cleanups.push(cleanup);
-      } else if (effect.type === 'shootingStars' && canvasRef.current) {
-        const cleanup = createShootingStarEffect(canvasRef.current, effect.config);
-        cleanups.push(cleanup);
-      } else if (effect.type === 'mist' && canvasRef.current) {
-        const cleanup = createMistEffect(canvasRef.current, effect.config);
-        cleanups.push(cleanup);
+    scene.effects.forEach((effect, index) => {
+      // Create a canvas for this effect
+      const canvas = document.createElement('canvas');
+      canvas.className = 'absolute inset-0 w-full h-full pointer-events-none';
+      canvas.style.zIndex = String(index);
+      container.appendChild(canvas);
+      canvases.push(canvas);
+
+      // Initialize the effect on its own canvas
+      if (effect.type === 'dust') {
+        cleanups.push(createDustEffect(canvas, effect.config));
+      } else if (effect.type === 'petals') {
+        cleanups.push(createPetalEffect(canvas, effect.config));
+      } else if (effect.type === 'shootingStars') {
+        cleanups.push(createShootingStarEffect(canvas, effect.config));
+      } else if (effect.type === 'mist') {
+        cleanups.push(createMistEffect(canvas, effect.config));
+      } else if (effect.type === 'waterDrips') {
+        cleanups.push(createWaterDripEffect(canvas, effect.config));
       }
-      // Future: add rain, snow, fireflies, etc.
     });
 
     return () => {
       cleanups.forEach((cleanup) => cleanup());
+      canvases.forEach((canvas) => canvas.remove());
     };
   }, [scene.effects, imageLoaded]);
 
@@ -96,9 +105,9 @@ export default function SceneViewer({ scene, fullscreen = false }: SceneViewerPr
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Effects Canvas Overlay */}
-      <canvas
-        ref={canvasRef}
+      {/* Effects Canvas Container - each effect gets its own canvas */}
+      <div
+        ref={canvasContainerRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 

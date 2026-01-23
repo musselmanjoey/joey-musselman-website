@@ -108,6 +108,43 @@ export const scenes: BookScene[] = [
       location: 'Terrasen - Oakwald Forest',
     },
   },
+  {
+    id: 'umberlee-sanctum',
+    name: 'Umberlee\'s Sanctum',
+    description: 'A bioluminescent cave temple where water drips from ancient stalactites into sacred pools.',
+    image: '/book-scenes/umberlee-sanctum.png',
+    effects: [
+      {
+        type: 'waterDrips',
+        config: {
+          frequency: 350,
+          speed: 5,
+          opacity: 0.7,
+          color: '#66DDFF',
+          maxDrips: 10,
+          minSize: 2,
+          maxSize: 4,
+        },
+      },
+      {
+        type: 'mist',
+        config: {
+          density: 8,
+          speed: 0.1,
+          opacity: 0.08,
+          color: '#88FFEE',
+          minSize: 120,
+          maxSize: 280,
+          layers: 2,
+        },
+      },
+    ],
+    book: {
+      title: 'D&D Campaign',
+      author: 'Homebrew',
+      location: 'Umberlee\'s Temple - Coastal Cave',
+    },
+  },
 ];
 
 export function getScene(id: string): BookScene | undefined {

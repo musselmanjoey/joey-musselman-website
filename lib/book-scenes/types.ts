@@ -1,4 +1,4 @@
-export type EffectType = 'dust' | 'petals' | 'rain' | 'snow' | 'fireflies' | 'candleFlicker' | 'shootingStars' | 'mist';
+export type EffectType = 'dust' | 'petals' | 'rain' | 'snow' | 'fireflies' | 'candleFlicker' | 'shootingStars' | 'mist' | 'waterDrips';
 
 export interface EffectConfig {
   type: EffectType;
@@ -23,6 +23,8 @@ export interface EffectConfig {
     maxSize?: number;      // Max star size
     // Mist properties
     layers?: number;       // Depth layers for parallax
+    // Water drips properties
+    maxDrips?: number;     // Max concurrent drips
   };
 }
 
