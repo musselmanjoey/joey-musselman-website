@@ -505,7 +505,7 @@ export class AvalonScene extends Phaser.Scene {
       this.roleCard.add(seesText);
     }
 
-    this.roleCard.setVisible(true);
+    // Role card stays hidden - use the ? button to show role popup
   }
 
   private showRolePopup() {
@@ -855,32 +855,64 @@ export class AvalonScene extends Phaser.Scene {
         this.actionArea.add(needMore);
       }
     } else {
-      // NON-HOST VIEW: Waiting screen
-      const title = this.add.text(0, -100, '⚔️ AVALON ⚔️', {
-        fontSize: '32px',
+      // NON-HOST VIEW: Game rules while waiting
+      const title = this.add.text(0, -270, '⚔️ AVALON ⚔️', {
+        fontSize: '28px',
         color: '#fbbf24',
         fontStyle: 'bold',
       }).setOrigin(0.5);
 
-      const countText = this.add.text(0, -50, `Players: ${playerCount}/${minPlayers} minimum`, {
-        fontSize: '18px',
+      const countText = this.add.text(0, -235, `${playerCount} players (${minPlayers} min)`, {
+        fontSize: '14px',
         color: playerCount >= minPlayers ? '#22c55e' : '#9ca3af',
       }).setOrigin(0.5);
 
-      this.contentContainer.add([title, countText]);
+      // Rules section
+      const rulesTitle = this.add.text(0, -200, 'HOW TO PLAY', {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
 
-      // Player list
-      if (players.length > 0) {
-        players.slice(0, 10).forEach((player, i) => {
-          const y = -10 + i * 25;
-          const isMe = player.id === this.playerId;
-          const text = this.add.text(0, y, `${isMe ? '→ ' : ''}${player.name}${player.id === data.hostId ? ' (Host)' : ''}`, {
-            fontSize: '14px',
-            color: isMe ? '#3b82f6' : '#ffffff',
-          }).setOrigin(0.5);
-          this.contentContainer.add(text);
-        });
-      }
+      const rules = [
+        { icon: '👥', text: 'Two teams: Good vs Evil' },
+        { icon: '🎯', text: 'Complete 5 quests total' },
+        { icon: '👑', text: 'Leader picks a quest team' },
+        { icon: '✓✗', text: 'Everyone votes to approve' },
+        { icon: '🃏', text: 'Team secretly plays cards' },
+        { icon: '💀', text: '1 Fail card = quest fails' },
+      ];
+
+      this.contentContainer.add([title, countText, rulesTitle]);
+
+      rules.forEach((rule, i) => {
+        const y = -165 + i * 32;
+        const ruleText = this.add.text(0, y, `${rule.icon}  ${rule.text}`, {
+          fontSize: '13px',
+          color: '#d1d5db',
+          align: 'center',
+        }).setOrigin(0.5);
+        this.contentContainer.add(ruleText);
+      });
+
+      // Win conditions
+      const winTitle = this.add.text(0, 40, 'WIN CONDITIONS', {
+        fontSize: '14px',
+        color: '#fbbf24',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      const goodWin = this.add.text(0, 65, '🛡️ Good: Win 3 quests', {
+        fontSize: '12px',
+        color: '#3b82f6',
+      }).setOrigin(0.5);
+
+      const evilWin = this.add.text(0, 85, '🗡️ Evil: Fail 3 quests OR find Merlin', {
+        fontSize: '12px',
+        color: '#dc2626',
+      }).setOrigin(0.5);
+
+      this.contentContainer.add([winTitle, goodWin, evilWin]);
 
       const waitText = this.add.text(0, 20, 'Waiting for host to start...', {
         fontSize: '16px',
@@ -964,7 +996,6 @@ export class AvalonScene extends Phaser.Scene {
   private showTeamBuilding(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(true);
-    this.roleCard.setVisible(true);
     this.contentContainer.setVisible(false);
     this.proposedTeam = [];
 
@@ -1000,7 +1031,6 @@ export class AvalonScene extends Phaser.Scene {
   private showVoting(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(true);
-    this.roleCard.setVisible(true);
     this.contentContainer.setVisible(false);
 
     this.createSeatingCircle(this.seating, false);
@@ -1074,7 +1104,6 @@ export class AvalonScene extends Phaser.Scene {
   private showQuest(data: PhaseData) {
     this.questTracker.setVisible(true);
     this.seatingCircle.setVisible(true);
-    this.roleCard.setVisible(true);
     this.contentContainer.setVisible(false);
 
     this.createSeatingCircle(this.seating, false);
@@ -1169,7 +1198,6 @@ export class AvalonScene extends Phaser.Scene {
 
   private showAssassination(data: PhaseData) {
     this.questTracker.setVisible(true);
-    this.roleCard.setVisible(true);
     this.seatingCircle.setVisible(true);
     this.contentContainer.setVisible(false);
     this.assassinationTarget = null;

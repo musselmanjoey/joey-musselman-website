@@ -7,7 +7,7 @@
 
 import { chromium, devices } from 'playwright';
 
-const URL = 'http://localhost:3000/clown-club';
+const URL = 'http://localhost:3004/clown-club';
 const PLAYER_COUNT = 5;
 const COLORS = ['garnet', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'white'];
 const device = devices['iPhone 12 Pro'];
