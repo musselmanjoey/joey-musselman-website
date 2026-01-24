@@ -1,4 +1,4 @@
-export type EffectType = 'dust' | 'petals' | 'rain' | 'snow' | 'fireflies' | 'candleFlicker' | 'shootingStars' | 'mist' | 'waterDrips';
+export type EffectType = 'dust' | 'petals' | 'rain' | 'snow' | 'fireflies' | 'candleFlicker' | 'shootingStars' | 'mist' | 'waterDrips' | 'steam';
 
 export interface EffectConfig {
   type: EffectType;
@@ -25,6 +25,12 @@ export interface EffectConfig {
     layers?: number;       // Depth layers for parallax
     // Water drips properties
     maxDrips?: number;     // Max concurrent drips
+    // Steam properties
+    sourceX?: number;      // X position (0-1, percentage)
+    sourceY?: number;      // Y position (0-1, percentage)
+    sourceWidth?: number;  // Width of emission area
+    lifespan?: number;     // Particle lifespan (ms)
+    turbulence?: number;   // Wispy movement strength
   };
 }
 

@@ -18,6 +18,24 @@ export const scenes: BookScene[] = [
           drift: 0.5,
         },
       },
+      {
+        type: 'steam',
+        config: {
+          sourceX: 0.28,       // Side table left of chair
+          sourceY: 0.58,       // Middle height where cup sits
+          sourceWidth: 25,
+          density: 2,
+          frequency: 150,
+          speed: 1.2,
+          opacity: 0.3,
+          color: '#FFFFFF',
+          minSize: 6,
+          maxSize: 35,
+          lifespan: 3500,
+          drift: 0.4,
+          turbulence: 0.6,
+        },
+      },
     ],
   },
   {
@@ -129,12 +147,12 @@ export const scenes: BookScene[] = [
       {
         type: 'mist',
         config: {
-          density: 8,
-          speed: 0.1,
-          opacity: 0.08,
+          density: 12,
+          speed: 0.2,
+          opacity: 0.35,
           color: '#88FFEE',
-          minSize: 120,
-          maxSize: 280,
+          minSize: 150,
+          maxSize: 350,
           layers: 2,
         },
       },

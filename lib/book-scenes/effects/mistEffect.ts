@@ -110,15 +110,20 @@ export function createMistEffect(
   }
 
   function handleResize() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    // Use parent dimensions if canvas hasn't been laid out yet
+    const width = canvas.offsetWidth || canvas.parentElement?.offsetWidth || window.innerWidth;
+    const height = canvas.offsetHeight || canvas.parentElement?.offsetHeight || window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
     initWisps();
   }
 
-  // Initialize
-  handleResize();
-  window.addEventListener('resize', handleResize);
-  animate();
+  // Initialize - slight delay to ensure layout is complete
+  requestAnimationFrame(() => {
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    animate();
+  });
 
   // Return cleanup function
   return () => {

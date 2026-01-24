@@ -7,13 +7,15 @@ import { createPetalEffect } from '@/lib/book-scenes/effects/petalParticles';
 import { createShootingStarEffect } from '@/lib/book-scenes/effects/shootingStars';
 import { createMistEffect } from '@/lib/book-scenes/effects/mistEffect';
 import { createWaterDripEffect } from '@/lib/book-scenes/effects/waterDrips';
+import { createSteamEffect } from '@/lib/book-scenes/effects/steamEffect';
 
 interface SceneViewerProps {
   scene: BookScene;
   fullscreen?: boolean;
+  disableEffects?: boolean;
 }
 
-export default function SceneViewer({ scene, fullscreen = false }: SceneViewerProps) {
+export default function SceneViewer({ scene, fullscreen = false, disableEffects = false }: SceneViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -21,7 +23,7 @@ export default function SceneViewer({ scene, fullscreen = false }: SceneViewerPr
 
   // Handle effects - each effect gets its own canvas
   useEffect(() => {
-    if (!canvasContainerRef.current || !imageLoaded) return;
+    if (!canvasContainerRef.current || !imageLoaded || disableEffects) return;
 
     const container = canvasContainerRef.current;
     const cleanups: (() => void)[] = [];
@@ -46,6 +48,8 @@ export default function SceneViewer({ scene, fullscreen = false }: SceneViewerPr
         cleanups.push(createMistEffect(canvas, effect.config));
       } else if (effect.type === 'waterDrips') {
         cleanups.push(createWaterDripEffect(canvas, effect.config));
+      } else if (effect.type === 'steam') {
+        cleanups.push(createSteamEffect(canvas, effect.config));
       }
     });
 
@@ -53,7 +57,7 @@ export default function SceneViewer({ scene, fullscreen = false }: SceneViewerPr
       cleanups.forEach((cleanup) => cleanup());
       canvases.forEach((canvas) => canvas.remove());
     };
-  }, [scene.effects, imageLoaded]);
+  }, [scene.effects, imageLoaded, disableEffects]);
 
   // Handle fullscreen toggle
   const toggleFullscreen = async () => {

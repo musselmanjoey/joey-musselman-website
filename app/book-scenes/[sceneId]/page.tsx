@@ -3,8 +3,12 @@ import Link from 'next/link';
 import { getScene, getAllScenes } from '@/lib/book-scenes/scenes';
 import SceneViewer from '@/components/book-scenes/SceneViewer';
 
+// Force dynamic rendering when searchParams are used
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: Promise<{ sceneId: string }>;
+  searchParams: Promise<{ noeffects?: string }>;
 }
 
 export async function generateStaticParams() {
@@ -28,9 +32,11 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-export default async function ScenePage({ params }: PageProps) {
+export default async function ScenePage({ params, searchParams }: PageProps) {
   const { sceneId } = await params;
+  const { noeffects } = await searchParams;
   const scene = getScene(sceneId);
+  const disableEffects = noeffects === 'true' || noeffects === '1';
 
   if (!scene) {
     notFound();
@@ -64,7 +70,7 @@ export default async function ScenePage({ params }: PageProps) {
 
       {/* Full Screen Viewer */}
       <div className="flex-1 flex items-center justify-center">
-        <SceneViewer scene={scene} fullscreen />
+        <SceneViewer scene={scene} fullscreen disableEffects={disableEffects} />
       </div>
     </main>
   );
