@@ -9,7 +9,7 @@ interface CommitRecord {
   sha: string;
   repo: string;
   message: string;
-  committed_at: string;
+  committed_at: Date | string;
   url: string | null;
 }
 
