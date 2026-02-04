@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ActivityFeed } from '@/components/ActivityFeed';
-import { createClient } from '@supabase/supabase-js';
+import { getPool } from '@/lib/db';
 
 // Revalidate page every 5 minutes to pick up new commits
 export const revalidate = 300;
@@ -20,41 +20,43 @@ interface ActivityItem {
 }
 
 async function getActivity(): Promise<{ activity: ActivityItem[]; updated_at: string | null }> {
-  // Skip if Supabase not configured (dev without env vars)
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  // Skip if database not configured (dev without env vars)
+  if (!process.env.RAILWAY_DATABASE_PUBLIC_URL) {
     return { activity: [], updated_at: null };
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+    const pool = getPool();
+
+    // Fetch recent commits
+    const result = await pool.query(
+      `SELECT sha, repo, message, committed_at, url
+       FROM commits
+       ORDER BY committed_at DESC
+       LIMIT 50`
     );
 
-    // Fetch recent commits from the new commits table
-    const { data: commits, error } = await supabase
-      .from('commits')
-      .select('sha, repo, message, committed_at, url')
-      .order('committed_at', { ascending: false })
-      .limit(50);
+    const commits = result.rows as CommitRecord[];
 
-    if (error) throw error;
-
-    if (!commits || commits.length === 0) {
+    if (commits.length === 0) {
       return { activity: [], updated_at: null };
     }
 
     // Group commits by repo + date for display
     const grouped = new Map<string, ActivityItem>();
 
-    for (const commit of commits as CommitRecord[]) {
-      const date = commit.committed_at.split('T')[0]; // YYYY-MM-DD
+    for (const commit of commits) {
+      // committed_at is a Date object from pg, convert to ISO string
+      const committedAt = commit.committed_at instanceof Date
+        ? commit.committed_at.toISOString()
+        : commit.committed_at;
+      const date = committedAt.split('T')[0]; // YYYY-MM-DD
       const key = `${commit.repo}|${date}`;
 
       if (!grouped.has(key)) {
         grouped.set(key, {
           repo: commit.repo,
-          date: commit.committed_at,
+          date: committedAt,
           commits: [],
         });
       }
@@ -68,11 +70,14 @@ async function getActivity(): Promise<{ activity: ActivityItem[]; updated_at: st
 
     // Convert to array and take top entries
     const activity = Array.from(grouped.values()).slice(0, 10);
-    const latestCommit = commits[0] as CommitRecord;
+    const latestCommit = commits[0];
+    const latestCommitDate = latestCommit?.committed_at instanceof Date
+      ? latestCommit.committed_at.toISOString()
+      : latestCommit?.committed_at || null;
 
     return {
       activity,
-      updated_at: latestCommit?.committed_at || null,
+      updated_at: latestCommitDate,
     };
   } catch {
     return { activity: [], updated_at: null };

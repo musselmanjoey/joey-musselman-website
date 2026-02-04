@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getPool } from '@/lib/db';
 
 interface CommitPayload {
   sha: string;
@@ -25,28 +25,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No commits provided' }, { status: 400 });
     }
 
-    const supabase = getServiceClient();
+    const pool = getPool();
 
     // Upsert commits - ON CONFLICT DO NOTHING (SHA is unique)
-    const { data, error } = await supabase
-      .from('commits')
-      .upsert(
-        commits.map(c => ({
-          sha: c.sha,
-          repo: c.repo,
-          message: c.message,
-          committed_at: c.committed_at,
-          url: c.url || null,
-        })),
-        { onConflict: 'sha', ignoreDuplicates: true }
-      )
-      .select('sha');
+    const values: (string | null)[] = [];
+    const placeholders: string[] = [];
 
-    if (error) throw error;
+    commits.forEach((c, i) => {
+      const offset = i * 5;
+      placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+      values.push(c.sha, c.repo, c.message, c.committed_at, c.url || null);
+    });
+
+    const query = `
+      INSERT INTO commits (sha, repo, message, committed_at, url)
+      VALUES ${placeholders.join(', ')}
+      ON CONFLICT (sha) DO NOTHING
+      RETURNING sha
+    `;
+
+    const result = await pool.query(query, values);
 
     return NextResponse.json({
       success: true,
-      inserted: data?.length || 0,
+      inserted: result.rowCount || 0,
       total: commits.length
     });
   } catch (error) {
@@ -65,36 +67,52 @@ export async function GET(request: Request) {
     const since = searchParams.get('since'); // ISO date string
     const until = searchParams.get('until'); // ISO date string
 
-    const supabase = getServiceClient();
+    const pool = getPool();
 
-    let query = supabase
-      .from('commits')
-      .select('sha, repo, message, committed_at, url', { count: 'exact' })
-      .order('committed_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+    let paramIndex = 1;
 
     if (repo) {
-      query = query.eq('repo', repo);
+      conditions.push(`repo = $${paramIndex++}`);
+      params.push(repo);
     }
     if (since) {
-      query = query.gte('committed_at', since);
+      conditions.push(`committed_at >= $${paramIndex++}`);
+      params.push(since);
     }
     if (until) {
-      query = query.lte('committed_at', until);
+      conditions.push(`committed_at <= $${paramIndex++}`);
+      params.push(until);
     }
 
-    const { data, error, count } = await query;
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    if (error) throw error;
+    // Get count
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM commits ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0].count);
+
+    // Get data
+    params.push(limit, offset);
+    const dataResult = await pool.query(
+      `SELECT sha, repo, message, committed_at, url
+       FROM commits
+       ${whereClause}
+       ORDER BY committed_at DESC
+       LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
+      params
+    );
 
     return NextResponse.json({
-      commits: data || [],
-      total: count || 0,
+      commits: dataResult.rows,
+      total,
       limit,
       offset,
     });
   } catch (error) {
-    console.error('GET /api/commits error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: 'Failed to fetch commits', details: message }, { status: 500 });
   }
