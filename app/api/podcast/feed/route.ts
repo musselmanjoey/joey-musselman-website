@@ -44,6 +44,7 @@ interface Episode {
   published_at: string;
   ai_generated: boolean;
   ai_disclosure: string | null;
+  episode_type: string | null;
 }
 
 export async function GET() {
@@ -51,7 +52,7 @@ export async function GET() {
     const pool = getPool();
 
     const result = await pool.query(
-      `SELECT id, title, description, audio_url, duration, file_size, episode_number, season, published_at, ai_generated, ai_disclosure
+      `SELECT id, title, description, audio_url, duration, file_size, episode_number, season, published_at, ai_generated, ai_disclosure, episode_type
        FROM podcast_episodes
        ORDER BY published_at DESC`
     );
@@ -80,6 +81,7 @@ export async function GET() {
       <itunes:title>${escapeXml(ep.title)}</itunes:title>
       <itunes:summary><![CDATA[${fullDescription}]]></itunes:summary>
       <itunes:duration>${formatDuration(ep.duration)}</itunes:duration>
+      <itunes:episodeType>${ep.episode_type || 'full'}</itunes:episodeType>
       <itunes:explicit>false</itunes:explicit>${ep.episode_number ? `
       <itunes:episode>${ep.episode_number}</itunes:episode>` : ''}${ep.season ? `
       <itunes:season>${ep.season}</itunes:season>` : ''}

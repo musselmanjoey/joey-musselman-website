@@ -13,6 +13,7 @@ interface EpisodePayload {
   published_at: string;
   ai_generated?: boolean;
   ai_disclosure?: string;
+  episode_type?: string;
 }
 
 // POST: Ingest episodes from Somman (batch upsert)
@@ -47,8 +48,14 @@ export async function POST(request: Request) {
         published_at TIMESTAMPTZ NOT NULL,
         ai_generated BOOLEAN DEFAULT true,
         ai_disclosure TEXT,
+        episode_type TEXT DEFAULT 'full',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
+    `);
+
+    // Add episode_type column if missing (for existing tables)
+    await pool.query(`
+      ALTER TABLE podcast_episodes ADD COLUMN IF NOT EXISTS episode_type TEXT DEFAULT 'full'
     `);
 
     // Batch upsert
@@ -56,9 +63,9 @@ export async function POST(request: Request) {
     const placeholders: string[] = [];
 
     episodes.forEach((ep, i) => {
-      const offset = i * 11;
+      const offset = i * 12;
       placeholders.push(
-        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11})`
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12})`
       );
       values.push(
         ep.id,
@@ -72,11 +79,12 @@ export async function POST(request: Request) {
         ep.published_at,
         ep.ai_generated ?? true,
         ep.ai_disclosure || null,
+        ep.episode_type || 'full',
       );
     });
 
     const query = `
-      INSERT INTO podcast_episodes (id, title, description, audio_url, duration, file_size, episode_number, season, published_at, ai_generated, ai_disclosure)
+      INSERT INTO podcast_episodes (id, title, description, audio_url, duration, file_size, episode_number, season, published_at, ai_generated, ai_disclosure, episode_type)
       VALUES ${placeholders.join(', ')}
       ON CONFLICT (id) DO UPDATE SET
         title = EXCLUDED.title,
@@ -88,7 +96,8 @@ export async function POST(request: Request) {
         season = EXCLUDED.season,
         published_at = EXCLUDED.published_at,
         ai_generated = EXCLUDED.ai_generated,
-        ai_disclosure = EXCLUDED.ai_disclosure
+        ai_disclosure = EXCLUDED.ai_disclosure,
+        episode_type = EXCLUDED.episode_type
       RETURNING id
     `;
 
