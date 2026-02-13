@@ -4,8 +4,10 @@ import { getPool } from '@/lib/db';
 const PODCAST_TITLE = 'Clown Cast';
 const PODCAST_AUTHOR = 'Joey Musselman';
 const PODCAST_DESCRIPTION =
-  'A daily podcast exploring technology, code, and creative projects — powered by AI research and human curiosity. ' +
-  'Each episode is generated using NotebookLM from research curated by Joey Musselman.';
+  'Podcasts about whatever I find interesting — history, tech, weird rabbit holes. ' +
+  'I was making these for myself anyway, so I figured I\'d share. ' +
+  'Research by Claude, produced with NotebookLM, deployed by tools built using Claude Code. ' +
+  'Orchestrated by a clown. Enjoy.';
 const PODCAST_LANGUAGE = 'en';
 const PODCAST_CATEGORY = 'Technology';
 const PODCAST_SUBCATEGORY = 'Tech News';
