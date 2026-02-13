@@ -11,7 +11,7 @@ const PODCAST_DESCRIPTION =
 const PODCAST_LANGUAGE = 'en';
 const PODCAST_CATEGORY = 'Technology';
 const PODCAST_SUBCATEGORY = 'Tech News';
-const PODCAST_EMAIL = 'joey@joeymusselman.com';
+const PODCAST_EMAIL = 'musselmanjoey@gmail.com';
 const SITE_URL = 'https://joeymusselman.com';
 const COVER_ART_URL = `${SITE_URL}/podcast/clown-cast-cover.jpg`;
 
