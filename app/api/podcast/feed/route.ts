@@ -101,6 +101,7 @@ export async function GET() {
     <language>${PODCAST_LANGUAGE}</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <atom:link href="${SITE_URL}/api/podcast/feed" rel="self" type="application/rss+xml" />
+    <atom:link rel="hub" href="https://pubsubhubbub.appspot.com" />
 
     <itunes:author>${escapeXml(PODCAST_AUTHOR)}</itunes:author>
     <itunes:owner>
