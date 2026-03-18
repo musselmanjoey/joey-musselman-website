@@ -131,35 +131,50 @@ export default async function Home() {
 
       {/* Projects */}
       <section className="mb-16">
-        <h2 className="text-xl font-semibold mb-6">Projects</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Projects</h2>
+          <Link href="/projects" className="text-sm link-underline text-[var(--muted)]">
+            View all →
+          </Link>
+        </div>
         <div className="space-y-6">
           <ProjectCard
-            title="Circus Video Archive"
-            description="Full-stack video archive serving FSU circus alumni with 2GB browser uploads, weighted community voting, and a hybrid YouTube upload pipeline. Live in production with real users."
-            tech={['Next.js 15', 'TypeScript', 'PostgreSQL', 'Prisma', 'Vercel Blob', 'Tailwind CSS']}
-            link="https://flyinghighcircusarchives.com"
+            title="EstiMate"
+            description="Custom B2B estimation tool for a 500+ employee warehouse contractor. Cut estimation time 50% with template-driven workflows, real-time calculations, and multi-stage approval pipeline."
+            tech={['Next.js', 'TypeScript', 'PostgreSQL', 'Prisma']}
+            link="/projects/estimate"
             featured
           />
           <ProjectCard
-            title="MagicHelper"
-            description="Python toolkit that parses MTG Arena logs to track card collections and validate decks, with 30+ MCP tools enabling AI-assisted deck building through Claude Desktop integration."
-            tech={['Python', 'SQLite', 'MCP', 'Scryfall API', 'AsyncIO']}
+            title="Circus Archives"
+            description="Production video archive for FSU circus alumni with 2GB browser uploads, automated YouTube publishing via GitHub Actions, and weighted community voting. Live with real users."
+            tech={['Next.js', 'TypeScript', 'PostgreSQL', 'Vercel Blob', 'GitHub Actions']}
+            link="/projects/circus-archives"
             featured
           />
           <ProjectCard
             title="Swaddle"
-            description="MCP server that connects Claude Desktop to Spotify, enabling natural language playlist curation. Search your music library, discover tracks, and create playlists through conversation - backed by PostgreSQL cache with audio feature analysis."
-            tech={['Python', 'MCP', 'Spotify API', 'PostgreSQL', 'OAuth 2.0']}
+            description="MCP server connecting Claude Desktop to Spotify for natural language playlist curation. One of 30+ production MCP tools I've built, with OAuth 2.0, PostgreSQL caching, and 13 audio feature metrics per track."
+            tech={['Node.js', 'MCP SDK', 'Spotify API', 'PostgreSQL', 'OAuth 2.0']}
+            link="/projects/swaddle"
           />
           <ProjectCard
-            title="OpTracker"
-            description="Real-time volleyball match tracking app with AI-powered analytics. Features a desktop UI for live game statistics capture and an MCP server enabling natural language queries to match data through Claude Desktop."
-            tech={['Python', 'PostgreSQL', 'SQLAlchemy 2.0', 'MCP', 'Docker', 'Tkinter']}
+            title="PodcastAI"
+            description="Fully automated podcast pipeline — send a topic via Telegram and get a complete episode with AI research, dual-host script, synthesized audio, transcription, and RSS publishing."
+            tech={['TypeScript', 'Claude CLI', 'Kokoro TTS', 'WhisperX', 'Cloudflare R2']}
+            link="/projects/podcast-ai"
           />
           <ProjectCard
-            title="Finance"
-            description="Privacy-first desktop app that detects forgotten subscriptions from bank statements using local AI. Categorizes transactions with Llama 3.1, identifies recurring charges with risk scoring - all running locally with no cloud dependencies."
-            tech={['Python', 'Ollama', 'PostgreSQL', 'Tkinter', 'pandas']}
+            title="GameSense"
+            description="Beach volleyball intelligence platform with automated FIVB data scraping, 12-table PostgreSQL schema, and live match tracking with point-by-point court zone visualization."
+            tech={['Next.js', 'TypeScript', 'PostgreSQL', 'Playwright']}
+            link="/projects/game-sense"
+          />
+          <ProjectCard
+            title="Pallet"
+            description="Smart meal planner with live Kroger API integration, 5-factor recommendation engine weighing seasonality and sales, and direct Harris Teeter cart additions."
+            tech={['Next.js', 'TypeScript', 'Kroger API', 'Supabase', 'PostgreSQL']}
+            link="/projects/pallet"
           />
         </div>
       </section>
@@ -231,11 +246,15 @@ function ProjectCard({
   );
 
   if (link) {
-    return (
-      <a href={link} target="_blank" rel="noopener noreferrer">
-        {content}
-      </a>
-    );
+    const isExternal = link.startsWith('http');
+    if (isExternal) {
+      return (
+        <a href={link} target="_blank" rel="noopener noreferrer">
+          {content}
+        </a>
+      );
+    }
+    return <Link href={link}>{content}</Link>;
   }
 
   return content;
