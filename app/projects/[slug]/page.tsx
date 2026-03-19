@@ -25,6 +25,8 @@ export async function generateMetadata({
       type: "article",
       siteName: "Joey Musselman",
       url: `https://joeymusselman.com/projects/${project.slug}`,
+      authors: ["Joey Musselman"],
+      publishedTime: project.date,
     },
     twitter: {
       card: "summary",
