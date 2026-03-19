@@ -15,9 +15,22 @@ export async function generateMetadata({
   const { slug } = await params;
   const project = projects.find((p) => p.slug === slug);
   if (!project) return { title: "Project Not Found" };
+  const title = `${project.title} | Joey Musselman`;
   return {
-    title: `${project.title} | Joey Musselman`,
+    title,
     description: project.intro,
+    openGraph: {
+      title,
+      description: project.intro,
+      type: "article",
+      siteName: "Joey Musselman",
+      url: `https://joeymusselman.com/projects/${project.slug}`,
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description: project.intro,
+    },
   };
 }
 
